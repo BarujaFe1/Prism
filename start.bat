@@ -1,5 +1,5 @@
 @echo off
-cd /d "C:\Users\BarujaFe\prism"
+cd /d "C:\dev\Prism"
 echo Starting Prism...
 npm run dev
 pause
