@@ -12,6 +12,14 @@
     "db:seed": "npx tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:scores": "npx tsx src/db/compute-scores.ts",
+    "companies:import": "npx tsx scripts/import-br-companies.ts",
+    "companies:detect": "npx tsx scripts/detect-companies.ts",
+    "companies:sync:p0": "npx tsx scripts/sync-companies.ts p0",
+    "companies:sync:p1": "npx tsx scripts/sync-companies.ts p1",
+    "companies:sync:p2": "npx tsx scripts/sync-companies.ts p2",
+    "companies:sync:all": "npx tsx scripts/sync-companies.ts all",
+    "jobs:sync:data": "npx tsx scripts/sync-data-opportunities.ts",
+    "jobs:rescore": "npx tsx src/db/compute-scores.ts",
     "setup": "npm run db:push && npm run db:seed && npm run db:scores"
   },
   "dependencies": {

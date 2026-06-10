@@ -36,9 +36,11 @@ O Prism centraliza a descoberta de vagas e automatiza o processo de triagem base
   - Tabela comparativa de aproveitamento por fonte/canal.
   - Alerta central de conexões/sincronizações com falha de conexão.
   - Histórico de volume de coletas diárias dos últimos 30 dias.
-- **Fontes & Empresas Monitoradas (Watchlist):**
+- **Fontes & Empresas Monitoradas (Watchlist - Cobertura Brasil):**
   - Monitoramento da saúde de sincronização de cada conector de vagas.
-  - **Empresas Monitoradas:** Watchlist de portais de carreira de empresas-alvo (Visa/Pismo, Serasa, Nubank, iFood, Mercado Livre, Stone, etc.), detectando automaticamente portais de ATS como **Greenhouse**, **Lever** e **AshbyHQ**.
+  - **Brazilian Company Watchlist:** Rastreia e prioriza portais de carreira de mais de 550 empresas brasileiras (fintechs, e-commerce, scale-ups, startups, etc.) já classificadas por setor e prioridade.
+  - **Detecção Inteligente de ATS:** Detecta e valida endpoints de portais de carreiras baseados em **Greenhouse**, **Lever**, **Ashby**, e **Gupy**.
+  - **Sync por Prioridade (P0/P1/P2):** Permite rodar varreduras por prioridade via comandos como `npm run companies:sync:p0`.
 - **Freelas:** Projetos freelance analisados por motor próprio de pontuação para o perfil técnico de Felipe (Foco em dados/web-scraping/automação).
 
 ---

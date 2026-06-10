@@ -1,7 +1,7 @@
 import type { RawJobData, LocationType, ContractType } from "@/types";
 import { db } from "@/db";
-import { jobs, jobEvents, connectorLogs } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { jobs, jobEvents, connectorLogs, jobSources, monitoredCompanies } from "@/db/schema";
+import { eq, and, or, sql } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { normalizeJob } from "@/engine/normalizer";
 import { computeScore } from "@/engine/scorer";
@@ -67,25 +67,121 @@ export async function saveJobs(jobsData: RawJobData[], connectorName: string): P
     negativeKeywords: (p.negativeKeywords || []) as string[],
   } : null;
 
+  const atsSources = ["greenhouse", "lever", "ashby", "gupy"];
+
   for (const raw of jobsData) {
     const normalized = normalizeJob(raw);
     const hash = simpleHash(`${normalized.title}|${normalized.company}|${normalized.location || ""}`);
 
+    // Check duplicate by hash OR url
     const existing = await db
-      .select({ id: jobs.id })
+      .select({ 
+        id: jobs.id, 
+        source: jobs.source, 
+        url: jobs.url, 
+        description: jobs.description, 
+        technologies: jobs.technologies 
+      })
       .from(jobs)
       .where(
-        and(
-          eq(jobs.source, normalized.source),
-          eq(jobs.hash, hash)
+        or(
+          eq(jobs.hash, hash),
+          eq(jobs.url, normalized.url || "")
         )
       )
       .get();
 
     if (existing) {
       dupCount++;
+
+      // Check if job source already registered
+      const existingSource = await db
+        .select()
+        .from(jobSources)
+        .where(
+          and(
+            eq(jobSources.jobId, existing.id),
+            eq(jobSources.sourceName, normalized.source || "")
+          )
+        )
+        .get();
+
+      if (!existingSource) {
+        const isNewAts = atsSources.includes(normalized.source?.toLowerCase() || "");
+        const isOldAts = atsSources.includes(existing.source?.toLowerCase() || "");
+        const isPreferred = isNewAts && !isOldAts;
+
+        // If new source is preferred, mark previous preferred sources as false
+        if (isPreferred) {
+          await db
+            .update(jobSources)
+            .set({ isPreferredApplySource: false })
+            .where(eq(jobSources.jobId, existing.id))
+            .run();
+        }
+
+        await db.insert(jobSources).values({
+          id: generateId(),
+          jobId: existing.id,
+          sourceName: normalized.source || "unknown",
+          sourceType: isNewAts ? "ats" : "aggregator",
+          originalUrl: normalized.url,
+          applyUrl: normalized.url || "",
+          firstSeenAt: new Date().toISOString(),
+          lastSeenAt: new Date().toISOString(),
+          confidence: 1.0,
+          isPreferredApplySource: isPreferred,
+        }).run();
+
+        // Update main job link / details if preferred or longer description is available
+        const updates: Record<string, any> = {};
+        
+        if (isPreferred) {
+          updates.source = normalized.source;
+          updates.url = normalized.url;
+        }
+
+        // Merge description if new one is longer/better
+        if (normalized.description && (!existing.description || normalized.description.length > existing.description.length)) {
+          updates.description = normalized.description;
+        }
+
+        // Merge technologies
+        const oldTechs = (existing.technologies || []) as string[];
+        const newTechs = normalized.technologies || [];
+        const mergedTechs = Array.from(new Set([...oldTechs, ...newTechs]));
+        if (mergedTechs.length > oldTechs.length) {
+          updates.technologies = mergedTechs;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await db
+            .update(jobs)
+            .set(updates)
+            .where(eq(jobs.id, existing.id))
+            .run();
+        }
+
+        await db.insert(jobEvents).values({
+          id: generateId(),
+          jobId: existing.id,
+          eventType: "updated",
+          description: `Vaga também encontrada via fonte secundária: ${connectorName}`,
+          occurredAt: new Date().toISOString(),
+        }).run();
+      }
+      
       continue;
     }
+
+    const companyNameNormalized = normalized.company?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+    const monitored = companyNameNormalized ? await db
+      .select({ priority: monitoredCompanies.priority })
+      .from(monitoredCompanies)
+      .where(eq(monitoredCompanies.normalizedName, companyNameNormalized))
+      .get() : null;
+    const companyPriority = monitored?.priority || null;
+    const isOfficialSource = atsSources.includes(normalized.source?.toLowerCase() || "");
 
     const id = generateId();
     const { score, details } = computeScore({
@@ -99,6 +195,10 @@ export async function saveJobs(jobsData: RawJobData[], connectorName: string): P
       salaryMax: normalized.salaryMax || null,
       currency: normalized.currency || null,
       postedAt: normalized.postedAt || raw.postedAt || null,
+      location: normalized.location || null,
+      company: normalized.company || null,
+      companyPriority,
+      isOfficialSource,
     }, profileData);
 
     const fitLabel = details.fitLabel || (score >= 0.75 ? "high" : score >= 0.50 ? "good" : score >= 0.30 ? "partial" : "low");
@@ -134,6 +234,20 @@ export async function saveJobs(jobsData: RawJobData[], connectorName: string): P
       fitLabel: fitLabel as any,
       status: "new",
     });
+
+    const isAts = atsSources.includes((normalized.source || raw.source).toLowerCase());
+    await db.insert(jobSources).values({
+      id: generateId(),
+      jobId: id,
+      sourceName: normalized.source || raw.source,
+      sourceType: isAts ? "ats" : "aggregator",
+      originalUrl: normalized.url || raw.url,
+      applyUrl: normalized.url || raw.url || "",
+      firstSeenAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      confidence: 1.0,
+      isPreferredApplySource: true,
+    }).run();
 
     await db.insert(jobEvents).values({
       id: generateId(),

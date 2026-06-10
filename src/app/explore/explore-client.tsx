@@ -63,15 +63,17 @@ const DATE_OPTIONS = [
 ];
 
 const DOMAIN_OPTIONS = [
-  { key: "data", label: "Dados / Estatística" },
+  { key: "data", label: "Dados" },
+  { key: "bi_analytics", label: "BI e Analytics" },
   { key: "data_engineering", label: "Engenharia de Dados" },
-  { key: "analytics", label: "Analytics / BI" },
-  { key: "ai_llm", label: "IA / LLM" },
-  { key: "fullstack_backend", label: "Backend / Fullstack" },
+  { key: "produto_dados", label: "Produto de Dados" },
+  { key: "estatistica", label: "Estatística e Experimentos" },
+  { key: "ia_aplicada", label: "IA Aplicada" },
+  { key: "fullstack_dados", label: "Full-Stack com Dados" },
+  { key: "fullstack_backend", label: "Backend / Fullstack Geral" },
   { key: "software_engineering", label: "Eng. de Software" },
-  { key: "frontend", label: "Frontend" },
   { key: "design", label: "Design" },
-  { key: "legal", label: "Jurídico / Compliance" },
+  { key: "legal", label: "Jurídico" },
   { key: "sales", label: "Vendas / Marketing" },
   { key: "finance_ops", label: "Finanças / Ops" },
   { key: "admin_support", label: "Suporte / Admin" },
@@ -143,6 +145,14 @@ export function ExploreClient() {
   const [showSuppressed, setShowSuppressed] = useState(searchParams.get("suppressed") === "true");
   const [dateType, setDateType] = useState(searchParams.get("date_type") || "fetched");
 
+  // New Watchlist & Quality Filters States
+  const [filterCompanyType, setFilterCompanyType] = useState(searchParams.get("comp_type") || "");
+  const [filterCompanySector, setFilterCompanySector] = useState(searchParams.get("comp_sector") || "");
+  const [filterCompanyPriority, setFilterCompanyPriority] = useState(searchParams.get("comp_priority") || "");
+  const [filterAtsType, setFilterAtsType] = useState(searchParams.get("ats_type") || "");
+  const [qualityFilter, setQualityFilter] = useState(searchParams.get("quality") || "");
+  const [warningTypeFilter, setWarningTypeFilter] = useState(searchParams.get("warning_type") || "");
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
@@ -175,12 +185,20 @@ export function ExploreClient() {
     if (showSuppressed) p.set("suppressed", "true");
     if (dateType !== "fetched") p.set("date_type", dateType);
 
+    if (filterCompanyType) p.set("comp_type", filterCompanyType);
+    if (filterCompanySector) p.set("comp_sector", filterCompanySector);
+    if (filterCompanyPriority) p.set("comp_priority", filterCompanyPriority);
+    if (filterAtsType) p.set("ats_type", filterAtsType);
+    if (qualityFilter) p.set("quality", qualityFilter);
+    if (warningTypeFilter) p.set("warning_type", warningTypeFilter);
+
     const qs = p.toString();
     router.replace(`/explore${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [
     search, selectedLocations, selectedContracts, selectedLevels, selectedAreas, 
     selectedTechs, selectedDate, minScore, internacional, sortBy, sortOrder, 
-    selectedDomains, selectedStatuses, selectedSources, warningFilter, showSuppressed, dateType, router
+    selectedDomains, selectedStatuses, selectedSources, warningFilter, showSuppressed, dateType,
+    filterCompanyType, filterCompanySector, filterCompanyPriority, filterAtsType, qualityFilter, warningTypeFilter, router
   ]);
 
   const { data: allJobs, isLoading } = useQuery({
@@ -191,6 +209,25 @@ export function ExploreClient() {
     },
     staleTime: 10000,
   });
+
+  const { data: companies } = useQuery<any[]>({
+    queryKey: ["target-companies"],
+    queryFn: async () => {
+      const res = await fetch("/api/companies");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const companyMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (!companies) return map;
+    companies.forEach((c) => {
+      map.set(c.name.toLowerCase(), c);
+      map.set(c.normalizedName, c);
+    });
+    return map;
+  }, [companies]);
 
   const { data: profile } = useQuery({
     queryKey: ["explore-profile"],
@@ -279,9 +316,101 @@ export function ExploreClient() {
     if (!allJobs) return [];
     const q = debouncedSearch.toLowerCase().trim();
     return allJobs.filter((job) => {
+      const comp = companyMap.get(job.company.toLowerCase());
+
       if (q) {
-        const text = `${job.title} ${job.company} ${job.description || ""} ${job.location || ""}`.toLowerCase();
-        if (!text.includes(q)) return false;
+        const words = q.split(/[\s,]+/).filter(Boolean);
+        let matchAts: string | null = null;
+        let matchPriority: string | null = null;
+        let matchModality: string | null = null;
+        let matchSeniority: string | null = null;
+        let matchContract: string | null = null;
+        let matchSector: string | null = null;
+        const textKeywords: string[] = [];
+
+        for (const w of words) {
+          const wl = w.toLowerCase();
+          
+          if (["gupy", "greenhouse", "lever", "ashby", "workday"].includes(wl)) {
+            matchAts = wl;
+          } else if (["p0", "p1", "p2"].includes(wl)) {
+            matchPriority = wl.toUpperCase();
+          } else if (["remoto", "remote", "home office"].includes(wl)) {
+            matchModality = "remote";
+          } else if (["hibrido", "híbrido", "hybrid"].includes(wl)) {
+            matchModality = "hybrid";
+          } else if (["presencial", "onsite", "on-site", "office"].includes(wl)) {
+            matchModality = "onsite";
+          } else if (["estagio", "estágio", "intern", "estagiario", "estagiário"].includes(wl)) {
+            matchSeniority = "internship";
+          } else if (["trainee"].includes(wl)) {
+            matchSeniority = "trainee";
+          } else if (["junior", "júnior", "jr"].includes(wl)) {
+            matchSeniority = "junior";
+          } else if (["pleno", "mid", "middle"].includes(wl)) {
+            matchSeniority = "mid";
+          } else if (["senior", "sênior", "sr"].includes(wl)) {
+            matchSeniority = "senior";
+          } else if (["lead", "staff", "principal"].includes(wl)) {
+            matchSeniority = "lead";
+          } else if (["clt"].includes(wl)) {
+            matchContract = "clt";
+          } else if (["pj"].includes(wl)) {
+            matchContract = "pj";
+          } else if (["freelance", "freelancer"].includes(wl)) {
+            matchContract = "freelancer";
+          } else if (["temporario", "temporário"].includes(wl)) {
+            matchContract = "temporary";
+          } else if (["fintech", "fintechs", "banco", "bancos", "credito", "crédito", "pagamento", "pagamentos"].includes(wl)) {
+            matchSector = "Fintech, bancos, crédito e pagamentos";
+          } else if (["saas", "software", "consultoria", "consultorias"].includes(wl)) {
+            matchSector = "Software, SaaS, dados e consultorias brasileiras";
+          } else if (["varejo", "ecommerce", "e-commerce", "marketplace", "marketplaces", "loja", "lojas"].includes(wl)) {
+            matchSector = "Varejo, e-commerce, marketplaces e consumer tech";
+          } else if (["logistica", "logística", "mobilidade", "transporte", "delivery"].includes(wl)) {
+            matchSector = "Logística, mobilidade, transporte e delivery";
+          } else if (["industria", "indústria", "energia", "agro", "infraestrutura"].includes(wl)) {
+            matchSector = "Indústria, energia, agro e infraestrutura";
+          } else if (["saude", "saúde", "educacao", "educação", "hr", "hrtech", "hr tech", "escola", "hospital"].includes(wl)) {
+            matchSector = "Saúde, educação e HR tech";
+          } else if (["seguro", "seguros", "risco", "antifraude"].includes(wl)) {
+            matchSector = "Seguros, risco e antifraude";
+          } else if (["telecom", "midia", "mídia", "entretenimento", "conteudo", "conteúdo"].includes(wl)) {
+            matchSector = "Telecom, mídia, entretenimento e conteúdo";
+          } else if (["proptech", "construcao", "construção", "real estate"].includes(wl)) {
+            matchSector = "Proptech, construção, real estate e serviços urbanos";
+          } else if (["startup", "startups", "scaleup", "scaleups", "small"].includes(wl)) {
+            matchSector = "Startups e scale-ups";
+          } else {
+            textKeywords.push(wl);
+          }
+        }
+
+        if (matchAts) {
+          const jobAts = comp?.detectedAts || (["greenhouse", "lever", "ashby", "gupy"].includes(job.source.toLowerCase()) ? job.source.toLowerCase() : "unknown");
+          if (jobAts !== matchAts) return false;
+        }
+        if (matchPriority) {
+          if (comp?.priority !== matchPriority) return false;
+        }
+        if (matchModality) {
+          if (job.locationType !== matchModality) return false;
+        }
+        if (matchSeniority) {
+          if (job.experienceLevel !== matchSeniority) return false;
+        }
+        if (matchContract) {
+          if (job.contractType !== matchContract) return false;
+        }
+        if (matchSector) {
+          if (comp?.sector !== matchSector) return false;
+        }
+
+        if (textKeywords.length > 0) {
+          const text = `${job.title} ${job.company} ${job.description || ""} ${job.location || ""}`.toLowerCase();
+          const matchesAll = textKeywords.every(kw => text.includes(kw));
+          if (!matchesAll) return false;
+        }
       }
 
       let details: any = {};
@@ -334,6 +463,34 @@ export function ExploreClient() {
 
       // Score filter
       if (minScore > 0 && (job.score ?? 0) < minScore / 100) return false;
+
+      // Watchlist & Company Filters
+      if (filterCompanyType === "monitored" && !comp) return false;
+      if (filterCompanyType === "p0" && comp?.priority !== "P0") return false;
+      if (filterCompanySector && comp?.sector !== filterCompanySector) return false;
+      if (filterCompanyPriority && comp?.priority !== filterCompanyPriority) return false;
+
+      // ATS Filter
+      const atsType = comp?.detectedAts || (["greenhouse", "lever", "ashby", "gupy"].includes(job.source.toLowerCase()) ? job.source.toLowerCase() : "unknown");
+      if (filterAtsType && atsType !== filterAtsType) return false;
+
+      // Quality Filter
+      if (qualityFilter) {
+        if (qualityFilter === "salary" && !job.salaryMin && !job.salaryMax) return false;
+        if (qualityFilter === "full_desc" && (!job.description || job.description.length < 500)) return false;
+        if (qualityFilter === "official" && !["greenhouse", "lever", "ashby", "gupy", "jobposting"].includes(job.source.toLowerCase())) return false;
+        if (qualityFilter === "weak_desc" && job.description && job.description.length >= 300) return false;
+        if (qualityFilter === "no_apply" && !job.url) return false;
+      }
+
+      // Warning type filter
+      if (warningTypeFilter) {
+        const penalties = details?.penalties || [];
+        if (warningTypeFilter === "seniority" && !penalties.some((p: string) => p.toLowerCase().includes("senioridade"))) return false;
+        if (warningTypeFilter === "onsite" && !penalties.some((p: string) => p.toLowerCase().includes("presencial"))) return false;
+        if (warningTypeFilter === "negative" && !penalties.some((p: string) => p.toLowerCase().includes("interesse") || p.toLowerCase().includes("tecnologia"))) return false;
+        if (warningTypeFilter === "divergent" && !penalties.some((p: string) => p.toLowerCase().includes("incompatível") || p.toLowerCase().includes("domínio"))) return false;
+      }
 
       // Area filter
       if (selectedAreas.length > 0) {
@@ -392,7 +549,7 @@ export function ExploreClient() {
       if (sortBy === "salary") return sortOrder === "desc" ? (b.salaryMax ?? 0) - (a.salaryMax ?? 0) : (a.salaryMax ?? 0) - (b.salaryMax ?? 0);
       return 0;
     });
-  }, [allJobs, debouncedSearch, selectedLocations, selectedContracts, selectedLevels, selectedAreas, selectedTechs, selectedDate, minScore, internacional, sortBy, sortOrder, selectedDomains, selectedStatuses, selectedSources, warningFilter, showSuppressed, dateType]);
+  }, [allJobs, debouncedSearch, selectedLocations, selectedContracts, selectedLevels, selectedAreas, selectedTechs, selectedDate, minScore, internacional, sortBy, sortOrder, selectedDomains, selectedStatuses, selectedSources, warningFilter, showSuppressed, dateType, filterCompanyType, filterCompanySector, filterCompanyPriority, filterAtsType, qualityFilter, warningTypeFilter, companyMap]);
 
   const toggleFilter = (arr: string[], val: string, set: (v: string[]) => void) => {
     set(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
@@ -415,15 +572,24 @@ export function ExploreClient() {
     setDateType("fetched");
     setSearch("");
     setDebouncedSearch("");
+    setFilterCompanyType("");
+    setFilterCompanySector("");
+    setFilterCompanyPriority("");
+    setFilterAtsType("");
+    setQualityFilter("");
+    setWarningTypeFilter("");
   };
 
   const hasFilters = selectedLocations.length > 0 || selectedContracts.length > 0 || selectedLevels.length > 0 ||
     selectedAreas.length > 0 || selectedTechs.length > 0 || selectedDomains.length > 0 || selectedStatuses.length > 0 ||
-    selectedSources.length > 0 || selectedDate || minScore > 0 || internacional || warningFilter || showSuppressed;
+    selectedSources.length > 0 || selectedDate || minScore > 0 || internacional || warningFilter || showSuppressed ||
+    filterCompanyType || filterCompanySector || filterCompanyPriority || filterAtsType || qualityFilter || warningTypeFilter;
 
   const activeFilterCount = [
     selectedLocations, selectedContracts, selectedLevels, selectedAreas, selectedTechs, selectedDomains, selectedStatuses, selectedSources
-  ].reduce((acc, arr) => acc + arr.length, 0) + (selectedDate ? 1 : 0) + (minScore > 0 ? 1 : 0) + (internacional ? 1 : 0) + (warningFilter ? 1 : 0) + (showSuppressed ? 1 : 0);
+  ].reduce((acc, arr) => acc + arr.length, 0) + (selectedDate ? 1 : 0) + (minScore > 0 ? 1 : 0) + (internacional ? 1 : 0) + 
+    (warningFilter ? 1 : 0) + (showSuppressed ? 1 : 0) + (filterCompanyType ? 1 : 0) + (filterCompanySector ? 1 : 0) + 
+    (filterCompanyPriority ? 1 : 0) + (filterAtsType ? 1 : 0) + (qualityFilter ? 1 : 0) + (warningTypeFilter ? 1 : 0);
 
   const showEmpty = !isLoading && filtered.length === 0 && timeoutReached;
   const showNoData = !isLoading && !allJobs?.length && timeoutReached;
@@ -492,6 +658,113 @@ export function ExploreClient() {
                 />
                 <span className="text-xs text-text-secondary flex-1">Ver Fora de Foco / suprimidas</span>
               </label>
+            </div>
+
+            {/* Watchlist & Empresas */}
+            <div>
+              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Watchlist Brasileira</p>
+              <div className="space-y-2 bg-bg-elevated/10 p-2 rounded-lg border border-border/40">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-text-tertiary mb-1 block">Empresa</label>
+                  <Select
+                    value={filterCompanyType}
+                    onChange={(e) => setFilterCompanyType(e.target.value)}
+                    className="w-full text-xs h-8"
+                  >
+                    <option value="">Todas</option>
+                    <option value="monitored">Apenas Monitoradas</option>
+                    <option value="p0">Apenas P0</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-text-tertiary mb-1 block">Setor da Empresa</label>
+                  <Select
+                    value={filterCompanySector}
+                    onChange={(e) => setFilterCompanySector(e.target.value)}
+                    className="w-full text-xs h-8"
+                  >
+                    <option value="">Todos os Setores</option>
+                    <option value="Fintech, bancos, crédito e pagamentos">Fintech, bancos e crédito</option>
+                    <option value="Software, SaaS, dados e consultorias brasileiras">SaaS, Softwares e Dados</option>
+                    <option value="Varejo, e-commerce, marketplaces e consumer tech">Varejo, E-commerce e Marketplaces</option>
+                    <option value="Logística, mobilidade, transporte e delivery">Logística e Mobilidade</option>
+                    <option value="Indústria, energia, agro e infraestrutura">Indústria, Agro e Infraestrutura</option>
+                    <option value="Saúde, educação e HR tech">Saúde, Educação e HR Tech</option>
+                    <option value="Seguros, risco e antifraude">Seguros, Risco e Antifraude</option>
+                    <option value="Telecom, mídia, entretenimento e conteúdo">Telecom, Mídia e Entretenimento</option>
+                    <option value="Proptech, construção, real estate e serviços urbanos">Proptech e Real Estate</option>
+                    <option value="Multinacionais com operação forte no Brasil">Multinacionais no BR</option>
+                    <option value="Startups e scale-ups">Startups e Scale-ups</option>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-text-tertiary mb-1 block">Prioridade</label>
+                    <Select
+                      value={filterCompanyPriority}
+                      onChange={(e) => setFilterCompanyPriority(e.target.value)}
+                      className="w-full text-xs h-8"
+                    >
+                      <option value="">Todas</option>
+                      <option value="P0">P0</option>
+                      <option value="P1">P1</option>
+                      <option value="P2">P2</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-text-tertiary mb-1 block">ATS</label>
+                    <Select
+                      value={filterAtsType}
+                      onChange={(e) => setFilterAtsType(e.target.value)}
+                      className="w-full text-xs h-8"
+                    >
+                      <option value="">Todos</option>
+                      <option value="greenhouse">Greenhouse</option>
+                      <option value="lever">Lever</option>
+                      <option value="ashby">AshbyHQ</option>
+                      <option value="gupy">Gupy</option>
+                      <option value="custom">Custom</option>
+                      <option value="unknown">Outros</option>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Qualidade e Alertas */}
+            <div>
+              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Qualidade e Filtros</p>
+              <div className="space-y-2 bg-bg-elevated/10 p-2 rounded-lg border border-border/40">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-text-tertiary mb-1 block">Sinais de Qualidade</label>
+                  <Select
+                    value={qualityFilter}
+                    onChange={(e) => setQualityFilter(e.target.value)}
+                    className="w-full text-xs h-8"
+                  >
+                    <option value="">Qualquer Qualidade</option>
+                    <option value="salary">Com Salário Informado</option>
+                    <option value="full_desc">Descrição Completa (+500 char)</option>
+                    <option value="official">Fontes Oficiais / ATS</option>
+                    <option value="weak_desc">Descrição Curta / Fraca</option>
+                    <option value="no_apply">Com Link de Candidatura</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-text-tertiary mb-1 block">Filtrar por Alerta</label>
+                  <Select
+                    value={warningTypeFilter}
+                    onChange={(e) => setWarningTypeFilter(e.target.value)}
+                    className="w-full text-xs h-8"
+                  >
+                    <option value="">Sem filtro de alertas</option>
+                    <option value="seniority">Senioridade acima do perfil</option>
+                    <option value="onsite">Presencial Obrigatório Longe</option>
+                    <option value="negative">Stack Fora de Interesse</option>
+                    <option value="divergent">Domínio Incompatível</option>
+                  </Select>
+                </div>
+              </div>
             </div>
 
             {/* Domains */}

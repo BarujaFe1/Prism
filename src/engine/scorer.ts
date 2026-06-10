@@ -88,58 +88,50 @@ const AREA_WEIGHTS: Record<string, Record<string, number>> = {
 function classifyDomain(title: string): string {
   const t = title.toLowerCase();
 
-  // Data / Science / Stats
-  if (/\b(data scientist|cientista de dados|science|cientista|estatistica|estatístico|statistics|modelagem|probability|probabilidade|analytics engineer)\b/i.test(t)) {
-    if (t.includes("engineer") || t.includes("engenha")) return "data_engineering";
-    return "data";
-  }
-
-  // Data Engineering
-  if (/\b(data engineer|engenheiro de dados|etl|airflow|dbt|data pipeline|pipelines? de dados)\b/i.test(t)) {
-    return "data_engineering";
-  }
-
-  // Analytics / BI
-  if (/\b(analytics|analista de dados|data analyst|business intelligence|bi|dashboard|power bi|tableau|looker|metabase)\b/i.test(t)) {
-    return "analytics";
-  }
-
-  // AI/LLM/Generative AI
-  if (/\b(llm|ia|generativa|prompt|rag|agents|generative ai|evals|datasets|ai engineer|inteligencia artificial)\b/i.test(t)) {
-    return "ai_llm";
-  }
-
-  // Design / UX
+  // 1. Incompatible Domains (Hard Gates)
   if (/\b(designer|design|ui\/ux|ux\/ui|figma|photoshop|illustrator|creative director|motion|graphic designer|web designer)\b/i.test(t)) {
     return "design";
   }
-
-  // Legal / Compliance
   if (/\b(privacy|compliance|lawyer|advogado|juridico|legal|dpo|lgpd)\b/i.test(t)) {
     return "legal";
   }
-
-  // Sales / Marketing
   if (/\b(sales|vendas|marketing|growth|copywriter|social|customer success|commercial|comercial|business developer|account manager)\b/i.test(t)) {
     return "sales";
   }
-
-  // Finance / Ops Non-data
-  if (/\b(treasury|tesouraria|operations|operações|financeiro|finance|financial|billing|faturamento)\b/i.test(t)) {
+  // Finance Ops non-data (avoid matching if it has explicit analytical terms)
+  if (/\b(treasury|tesouraria|operations|operações|financeiro|finance|financial|billing|faturamento)\b/i.test(t) && 
+      !/\b(data|analyst|analytics|dados|sql|bi)\b/i.test(t)) {
     return "finance_ops";
   }
-
-  // Admin / Support
   if (/\b(admin|administrator|suporte|support|virtual assistant|assistente|helpdesk|receptionist|recepcionista|secretaria|atendimento|sac)\b/i.test(t)) {
     return "admin_support";
   }
 
-  // Full-Stack / Backend
+  // 2. Data & Tech Search Families (Felipe's Core Focus)
+  if (/\b(data engineer|engenheiro de dados|etl|elt|data pipeline|pipelines? de dados)\b/i.test(t)) {
+    return "data_engineering";
+  }
+  if (/\b(data scientist|cientista de dados|science|cientista|data analyst|analista de dados|estágio em dados|data intern|junior data analyst)\b/i.test(t)) {
+    return "data";
+  }
+  if (/\b(bi|business intelligence|analytics|analytics engineer|product analytics|revenue analytics|marketing analytics|customer analytics|operations analytics|dashboard|power bi|tableau|looker|metabase)\b/i.test(t)) {
+    return "bi_analytics";
+  }
+  if (/\b(produto de dados|data product|data quality|data governance|data profiling|data ops|data automation|qualidade de dados|governança de dados)\b/i.test(t)) {
+    return "produto_dados";
+  }
+  if (/\b(estatistica|estatístico|statistics|experimentação|experimentacao|teste a\/b|ab testing|causal inference|inference|inferência|modelagem|probabilidade|probability)\b/i.test(t)) {
+    return "estatistica";
+  }
+  if (/\b(ia|ai|inteligência artificial|inteligencia artificial|machine learning|ml|llm|generative ai|prompt engineering|ai evaluation|data labeling|evals|datasets|rag)\b/i.test(t)) {
+    return "ia_aplicada";
+  }
+  if (/\b(fullstack data|full stack data|fullstack analytics|dashboard developer|internal tools|automação|automacao|python developer data|backend data|api analytics)\b/i.test(t)) {
+    return "fullstack_dados";
+  }
   if (/\b(full stack|fullstack|full-stack|backend|back end|back-end|python|nodejs|typescript|node dev|node\.js|go dev|golang|rust dev)\b/i.test(t)) {
     return "fullstack_backend";
   }
-
-  // Software Engineering
   if (/\b(software engineer|engenheiro de software|desenvolvedor|developer|programmer|programador|eng\. de software)\b/i.test(t)) {
     return "software_engineering";
   }
@@ -159,6 +151,9 @@ export function computeScore(job: {
   currency: string | null;
   postedAt?: string | null;
   location?: string | null;
+  company?: string | null;
+  companyPriority?: string | null;
+  isOfficialSource?: boolean | null;
 }, profile: ProfileData | null): { score: number; details: ScoreDetails & Record<string, any> } {
   if (!profile) {
     return {
@@ -228,6 +223,7 @@ export function computeScore(job: {
   }
   total *= negativeMultiplier;
 
+  // Penalize non-dev/non-data roles
   const nonDevRoles = ["designer", "design", "ui/ux", "ux/ui", "figma", "photoshop", "illustrator", "video editor", "motion", "animator", "3d artist", "graphic design", "social media", "marketing", "sales", "vendas", "suporte", "support", "administrativo", "administrative", "recepcionista", "assistente virtual", "virtual assistant", "customer service", "atendimento", "recursos humanos", "hr", "rh", "contabilidade", "accounting", "financeiro", "finance", "copywriter", "content writer", "conteúdo", "community manager"];
   for (const nonDev of nonDevRoles) {
     if (titleLower.includes(nonDev)) {
@@ -242,13 +238,22 @@ export function computeScore(job: {
     total *= 0.2;
   }
 
+  // 3. Apply Company Watchlist & Official Source Bonuses
+  let companyBonus = 0;
+  if (job.companyPriority === "P0") companyBonus = 0.12;
+  else if (job.companyPriority === "P1") companyBonus = 0.08;
+  else if (job.companyPriority === "P2") companyBonus = 0.04;
+
+  const officialBonus = job.isOfficialSource ? 0.03 : 0;
+
+  total += companyBonus + officialBonus;
   total = Math.max(0, Math.min(total, 1));
 
   if (skillScore >= 0.80 && total > 0.5) {
     total = Math.min(total + 0.05, 1);
   }
 
-  // 3. Apply Gates
+  // 4. Apply Hard Gates
   const penalties: string[] = [];
   const warnings: string[] = [];
 
@@ -275,7 +280,7 @@ export function computeScore(job: {
 
   total = Math.round(total * 100) / 100;
 
-  // 4. Fit Label
+  // 5. Fit Label & Explanation
   let fitLabel: "high" | "good" | "partial" | "low" = "low";
   let scoreLabel = "Baixo fit";
   if (isIncompatibleDomain) {
@@ -294,7 +299,7 @@ export function computeScore(job: {
 
   let explanation = "";
   if (scoreLabel === "Fora do foco") {
-    explanation = "Suprimida: domínio '" + domain + "' incompatível com o perfil";
+    explanation = "Vaga suprimida: cargo fora do foco (" + domain + ")";
   } else if (penalties.length > 0) {
     explanation = "Revisar: " + penalties.join("; ");
   } else {
@@ -303,11 +308,19 @@ export function computeScore(job: {
     const profileSkills = profile.skills.map(s => s.toLowerCase().trim());
     const matchedTechs = [...allJobTechs].filter(t => profileSkills.includes(t)).map(t => capitalize(t));
 
+    let detailsStr = "";
     if (matchedTechs.length > 0) {
-      explanation = scoreLabel + ": foca em " + matchedTechs.slice(0, 3).join(", ");
+      detailsStr = "match em " + matchedTechs.slice(0, 3).join(", ");
     } else {
-      explanation = scoreLabel + " para " + cleanTitle;
+      detailsStr = "aderência geral de cargo";
     }
+
+    let bonusStr = "";
+    if (job.companyPriority) {
+      bonusStr = ` (Empresa Monitorada ${job.companyPriority})`;
+    }
+
+    explanation = `${scoreLabel} por ${detailsStr}${bonusStr}`;
   }
 
   const explanationDetail = `Classificação de Domínio: ${domain}. ` +

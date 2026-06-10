@@ -4,7 +4,7 @@ export type ExperienceLevel = "internship" | "trainee" | "junior" | "mid" | "sen
 export type SalaryPeriod = "yearly" | "monthly" | "weekly" | "hourly" | "contract";
 export type JobStatus = "new" | "saved" | "high_priority" | "preparing" | "applied" | "reviewing" | "interview" | "offer" | "rejected" | "ignored" | "archived";
 export type FitLabel = "high" | "good" | "partial" | "low";
-export type SourceType = "linkedin" | "indeed" | "remoteok" | "google_jobs" | "gupy" | "workana" | "glassdoor" | "weworkremotely" | "wellfound" | "greenhouse" | "lever" | "remotive" | "hackernews" | "arbeitnow" | "jobicy" | "linkedin_rss" | "remote-co" | "4dayweek" | "nodesk" | "revelo" | "himalayas" | "stackoverflow" | "manual" | "csv" | "other";
+export type SourceType = "linkedin" | "indeed" | "remoteok" | "google_jobs" | "gupy" | "workana" | "glassdoor" | "weworkremotely" | "wellfound" | "greenhouse" | "lever" | "remotive" | "hackernews" | "arbeitnow" | "jobicy" | "linkedin_rss" | "remote-co" | "4dayweek" | "nodesk" | "revelo" | "himalayas" | "stackoverflow" | "manual" | "csv" | "ashby" | "jobposting" | "custom" | "other";
 
 export interface ScoreDetails {
   title: number;

@@ -14,6 +14,18 @@ import { locationTypeLabel, experienceLevelLabel, timeAgo } from "@/lib/utils";
 const MODALIDADE_FILTERS = ["remote", "hybrid", "onsite"];
 const SENIORITY_FILTERS = ["internship", "trainee", "junior", "mid", "senior", "lead"];
 
+const BR_CATEGORIES = [
+  { id: "novas_p0", label: "Novas P0", icon: "🔥" },
+  { id: "estagio_junior", label: "Estágio / Júnior", icon: "🎓" },
+  { id: "fintechs", label: "Fintechs e Bancos", icon: "💳" },
+  { id: "saas", label: "SaaS / Softwares", icon: "🌐" },
+  { id: "ecommerce", label: "E-commerce", icon: "🛒" },
+  { id: "logistica", label: "Logística / Mobilidade", icon: "🚚" },
+  { id: "startups", label: "Startups / Scale-ups", icon: "🚀" },
+  { id: "oficiais", label: "Fontes Oficiais", icon: "💼" },
+  { id: "hoje", label: "Aplicar Hoje", icon: "✨" },
+];
+
 export default function RadarPage() {
   const [modalidadeFilters, setModalidadeFilters] = useState<string[]>([]);
   const [seniorityFilters, setSeniorityFilters] = useState<string[]>([]);
@@ -131,6 +143,129 @@ export default function RadarPage() {
 
     return { followUpsOverdue, highFitNotActioned, topRec, hasPendingAction };
   }, [allJobs, settings]);
+
+  // Load target companies for sector / priority lookup
+  const { data: targetCompanies } = useQuery<any[]>({
+    queryKey: ["target-companies"],
+    queryFn: async () => {
+      const res = await fetch("/api/companies");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const companyMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (!targetCompanies) return map;
+    targetCompanies.forEach((c) => {
+      map.set(c.name.toLowerCase(), c);
+      map.set(c.normalizedName, c);
+    });
+    return map;
+  }, [targetCompanies]);
+
+  const [selectedBrCategory, setSelectedBrCategory] = useState("novas_p0");
+
+  const brCategoryJobs = useMemo(() => {
+    const categories: Record<string, JobWithStatus[]> = {
+      novas_p0: [],
+      estagio_junior: [],
+      fintechs: [],
+      saas: [],
+      ecommerce: [],
+      logistica: [],
+      startups: [],
+      oficiais: [],
+      hoje: [],
+    };
+
+    if (!allJobs) return categories;
+
+    const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
+
+    allJobs.forEach((j) => {
+      let details: any = {};
+      try {
+        details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails || {};
+      } catch {}
+      
+      // Hide suppressed / low-fit jobs
+      if (details?.scoreLabel === "Fora do foco" || (j.score ?? 0) <= 0.30) {
+        return;
+      }
+
+      const comp = companyMap.get(j.company.toLowerCase());
+
+      // 1. Novas P0
+      const collected = j.fetchedAt ? new Date(j.fetchedAt).getTime() : 0;
+      const isRecent = collected > fortyEightHoursAgo;
+      if (j.status === "new" && isRecent && comp?.priority === "P0") {
+        categories.novas_p0.push(j);
+      }
+
+      // 2. Estágio / Júnior
+      const titleLower = j.title.toLowerCase();
+      const isJuniorOrIntern =
+        j.contractType === "internship" ||
+        j.experienceLevel === "internship" ||
+        j.experienceLevel === "trainee" ||
+        j.experienceLevel === "junior" ||
+        titleLower.includes("estagio") ||
+        titleLower.includes("estágio") ||
+        titleLower.includes("estagiário") ||
+        titleLower.includes("junior") ||
+        titleLower.includes("júnior") ||
+        titleLower.includes("trainee") ||
+        titleLower.includes("intern");
+      if (j.status === "new" && isJuniorOrIntern) {
+        categories.estagio_junior.push(j);
+      }
+
+      // 3. Fintechs
+      if (j.status === "new" && comp?.sector === "Fintech, bancos, crédito e pagamentos") {
+        categories.fintechs.push(j);
+      }
+
+      // 4. SaaS
+      if (j.status === "new" && comp?.sector === "Software, SaaS, dados e consultorias brasileiras") {
+        categories.saas.push(j);
+      }
+
+      // 5. E-commerce
+      if (j.status === "new" && comp?.sector === "Varejo, e-commerce, marketplaces e consumer tech") {
+        categories.ecommerce.push(j);
+      }
+
+      // 6. Logística
+      if (j.status === "new" && comp?.sector === "Logística, mobilidade, transporte e delivery") {
+        categories.logistica.push(j);
+      }
+
+      // 7. Startups
+      if (j.status === "new" && comp?.sector === "Startups e scale-ups") {
+        categories.startups.push(j);
+      }
+
+      // 8. Fontes Oficiais
+      const isOfficialSource = ["greenhouse", "lever", "ashby", "gupy", "jobposting"].includes(j.source.toLowerCase());
+      if (j.status === "new" && isOfficialSource) {
+        categories.oficiais.push(j);
+      }
+
+      // 9. Aplicar Hoje
+      const isHighFit = j.fitLabel === "high" || (j.score ?? 0) >= 0.75;
+      if (isHighFit && ["new", "saved"].includes(j.status)) {
+        categories.hoje.push(j);
+      }
+    });
+
+    // Sort all buckets by score descending
+    Object.keys(categories).forEach((k) => {
+      categories[k].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    });
+
+    return categories;
+  }, [allJobs, companyMap]);
 
   return (
     <Shell>
@@ -304,6 +439,50 @@ export default function RadarPage() {
           </div>
         ) : (
           <>
+            {/* OPORTUNIDADES BRASIL */}
+            <div className="mb-10 bg-bg-elevated/20 border border-border p-6 rounded-xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-border/60 pb-3 gap-2">
+                <div>
+                  <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+                    <span>🇧🇷 Oportunidades Brasil</span>
+                    <Badge variant="accent" className="text-[10px] px-1.5 py-0">Watchlist</Badge>
+                  </h2>
+                  <p className="text-xs text-text-tertiary mt-0.5">Vagas segmentadas em empresas com forte atuação no Brasil</p>
+                </div>
+              </div>
+              
+              {/* Horizontal scrollable pills */}
+              <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border">
+                {BR_CATEGORIES.map((cat) => {
+                  const count = brCategoryJobs[cat.id]?.length || 0;
+                  const isActive = selectedBrCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedBrCategory(cat.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap border ${
+                        isActive
+                          ? "bg-accent text-white border-accent shadow-sm"
+                          : "bg-bg-elevated/40 border-border/80 text-text-secondary hover:text-text-primary hover:bg-bg-elevated/80"
+                      }`}
+                    >
+                      <span>{cat.icon} {cat.label}</span>
+                      <span className={`text-[10px] rounded px-1.5 font-bold ${
+                        isActive ? "bg-white/20 text-white" : "bg-bg-elevated text-text-tertiary"
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Opportunities list inside section */}
+              <div className="max-h-[500px] overflow-y-auto pr-1 space-y-2">
+                <RadarList jobs={brCategoryJobs[selectedBrCategory] || []} />
+              </div>
+            </div>
+
             {highFitJobs.length > 0 && (
               <div className="mb-8">
                 <h2 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">

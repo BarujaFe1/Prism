@@ -174,21 +174,59 @@ export const profile = sqliteTable("profile", {
     .default(sql`(current_timestamp)`),
 });
 
-export const targetCompanies = sqliteTable("target_companies", {
+
+export const monitoredCompanies = sqliteTable("monitored_companies", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  domain: text("domain").notNull(),
-  careersUrl: text("careers_url"),
-  atsType: text("ats_type", {
-    enum: ["greenhouse", "lever", "ashby", "workday", "custom"],
-  }),
-  keywords: text("keywords", { mode: "json" }).$type<string[]>(),
-  lastCrawledAt: text("last_crawled_at"),
+  normalizedName: text("normalized_name").notNull(),
+  sector: text("sector"),
+  priority: text("priority"),
+  countryFocus: text("country_focus"),
+  targetRoles: text("target_roles"),
+  whyMonitor: text("why_monitor"),
+  searchQueryPt: text("search_query_pt"),
+  searchQueryEn: text("search_query_en"),
+  atsHint: text("ats_hint"),
+  careerUrl: text("career_url"),
+  detectedAts: text("detected_ats"),
+  status: text("status")
+    .notNull()
+    .default("never_synced"),
+  lastSyncAttemptAt: text("last_sync_attempt_at"),
+  lastSuccessfulSyncAt: text("last_successful_sync_at"),
   lastError: text("last_error"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  totalJobsFound: integer("total_jobs_found").default(0),
+  totalRelevantJobs: integer("total_relevant_jobs").default(0),
+  totalSavedJobs: integer("total_saved_jobs").default(0),
+  totalAppliedJobs: integer("total_applied_jobs").default(0),
+  usefulnessRate: real("usefulness_rate").default(0.0),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  notes: text("notes"),
+});
+
+export const jobSources = sqliteTable("job_sources", {
+  id: text("id").primaryKey(),
+  jobId: text("job_id")
+    .notNull()
+    .references(() => jobs.id, { onDelete: "cascade" }),
+  sourceName: text("source_name").notNull(),
+  sourceType: text("source_type").notNull(),
+  originalUrl: text("original_url"),
+  applyUrl: text("apply_url").notNull(),
+  firstSeenAt: text("first_seen_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  lastSeenAt: text("last_seen_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  confidence: real("confidence").default(1.0),
+  isPreferredApplySource: integer("is_preferred_apply_source", { mode: "boolean" }).default(false),
 });
 
 export const settings = sqliteTable("settings", {
