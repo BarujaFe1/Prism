@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Prism Analytics placeholder">
+  <rect width="1200" height="630" fill="#0a0a0b"/>
+  <rect x="40" y="40" width="152" height="550" rx="14" fill="#141415" stroke="#2c2c2e"/>
+  <text x="220" y="90" fill="#f5f5f7" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="600">Analytics</text>
+  <text x="220" y="124" fill="#98989d" font-family="Segoe UI, Arial, sans-serif" font-size="14">Demanda de skills vs perfil  insights para priorização</text>
+  <rect x="220" y="160" width="220" height="100" rx="12" fill="#141415" stroke="#2c2c2e"/>
+  <rect x="460" y="160" width="220" height="100" rx="12" fill="#141415" stroke="#2c2c2e"/>
+  <rect x="700" y="160" width="220" height="100" rx="12" fill="#141415" stroke="#2c2c2e"/>
+  <rect x="940" y="160" width="220" height="100" rx="12" fill="#141415" stroke="#2c2c2e"/>
+  <rect x="220" y="290" width="940" height="280" rx="14" fill="#141415" stroke="#2c2c2e"/>
+  <polyline points="260,520 340,470 420,490 500,400 580,430 660,360 740,390 820,320 900,350 980,280 1060,300" fill="none" stroke="#0a84ff" stroke-width="3"/>
+  <text x="240" y="320" fill="#f5f5f7" font-family="Segoe UI, Arial, sans-serif" font-size="14">Skill demand trend (placeholder)</text>
+  <text x="220" y="610" fill="#6e6e73" font-family="Segoe UI, Arial, sans-serif" font-size="12">Placeholder  replace with seed-data capture</text>
+</svg>

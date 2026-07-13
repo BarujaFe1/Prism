@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Prism Pipeline placeholder">
+  <rect width="1200" height="630" fill="#0a0a0b"/>
+  <rect x="40" y="40" width="152" height="550" rx="14" fill="#141415" stroke="#2c2c2e"/>
+  <text x="220" y="90" fill="#f5f5f7" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="600">Pipeline</text>
+  <text x="220" y="124" fill="#98989d" font-family="Segoe UI, Arial, sans-serif" font-size="14">Kanban de candidaturas  salva ’ entrevista ’ oferta</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#98989d">
+    <rect x="220" y="160" width="220" height="420" rx="12" fill="#141415" stroke="#2c2c2e"/>
+    <text x="240" y="188" fill="#0a84ff">Salvas</text>
+    <rect x="240" y="210" width="180" height="64" rx="8" fill="#1c1c1e"/>
+    <rect x="240" y="286" width="180" height="64" rx="8" fill="#1c1c1e"/>
+    <rect x="460" y="160" width="220" height="420" rx="12" fill="#141415" stroke="#2c2c2e"/>
+    <text x="480" y="188" fill="#30d158">Aplicadas</text>
+    <rect x="480" y="210" width="180" height="64" rx="8" fill="#1c1c1e"/>
+    <rect x="700" y="160" width="220" height="420" rx="12" fill="#141415" stroke="#2c2c2e"/>
+    <text x="720" y="188" fill="#ff9f0a">Entrevista</text>
+    <rect x="720" y="210" width="180" height="64" rx="8" fill="#1c1c1e"/>
+    <rect x="940" y="160" width="220" height="420" rx="12" fill="#141415" stroke="#2c2c2e"/>
+    <text x="960" y="188" fill="#30d158">Oferta</text>
+  </g>
+  <text x="220" y="610" fill="#6e6e73" font-family="Segoe UI, Arial, sans-serif" font-size="12">Placeholder  capture real UI via docs/DEMO_SCRIPT.md</text>
+</svg>

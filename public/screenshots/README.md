@@ -1,10 +1,11 @@
 # Screenshots
 
-Add product screenshots here for the README:
+| File | Intent |
+|---|---|
+| `radar.svg` | Home radar / briefing |
+| `pipeline.svg` | Kanban pipeline |
+| `analytics.svg` | Skill demand analytics |
 
-- `radar.png` — home radar with briefing and high-fit jobs
-- `pipeline.png` — Kanban pipeline
-- `analytics.png` — charts / skill demand
-- `freelas.png` — freelance module
+These are **honest placeholders**. Replace with PNG captures from seed data using `docs/DEMO_SCRIPT.md`.
 
-Until real captures exist, the README uses a textual placeholder.
+Do not crop personal emails, real resumes, or private DB contents into screenshots.
