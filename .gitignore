@@ -30,8 +30,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — keep examples commit-safe
+.env
+.env.*
+!.env.example
+
+# local databases and personal data exports
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+/data/
+/exports/
+/backups/
 
 # vercel
 .vercel
@@ -39,3 +50,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# OS / IDE
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/extensions.json
