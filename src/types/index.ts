@@ -159,6 +159,7 @@ export interface SettingsData {
   alertHighFitDays: number;
   dailyBriefingEnabled: boolean;
   lastBackupAt: string | null;
+  demoMode?: boolean;
 }
 
 export interface ApplicationTask {

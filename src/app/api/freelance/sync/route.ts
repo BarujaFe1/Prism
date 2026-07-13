@@ -7,8 +7,13 @@ import {
   freelanceProposals,
 } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
+import { demoModeBlockedResponse, isDemoMode } from "@/lib/api-guards";
 
 export async function POST(request: Request) {
+  if (isDemoMode()) {
+    return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const sourceId = body.sourceId as string | undefined;
 

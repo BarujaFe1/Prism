@@ -20,6 +20,7 @@ import { fetchGupy } from "@/connectors/gupy";
 import { db } from "@/db";
 import { connectorLogs, jobs } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
+import { demoModeBlockedResponse, isDemoMode } from "@/lib/api-guards";
 
 interface ConnectorDef {
   id: string;
@@ -49,6 +50,10 @@ const connectors: ConnectorDef[] = [
 ];
 
 export async function POST(request: Request) {
+  if (isDemoMode()) {
+    return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const connectorId = body.connectorId as string | undefined;
   const connectorsList = body.connectors as string[] | undefined;
@@ -68,8 +73,9 @@ export async function POST(request: Request) {
     try {
       const result = await connector.fetch();
       results[connector.id] = result;
-    } catch (err: any) {
-      errors.push(`${connector.name}: ${err.message}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      errors.push(`${connector.name}: ${message}`);
       results[connector.id] = { new: 0, duplicate: 0, total: 0 };
     }
   }

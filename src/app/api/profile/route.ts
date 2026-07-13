@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { profile } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { demoModeBlockedResponse, isDemoMode, sanitizePatch } from "@/lib/api-guards";
 
 const ALLOWED_FIELDS = new Set([
   "name",
@@ -45,16 +46,15 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    if (isDemoMode()) {
+      return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+    }
+
     const body = (await request.json()) as Record<string, unknown>;
-    const sanitized: Record<string, unknown> = {
+    const sanitized = {
+      ...sanitizePatch(body, ALLOWED_FIELDS),
       updatedAt: new Date().toISOString(),
     };
-
-    for (const [key, value] of Object.entries(body)) {
-      if (ALLOWED_FIELDS.has(key)) {
-        sanitized[key] = value;
-      }
-    }
 
     if (Object.keys(sanitized).length === 1) {
       return NextResponse.json({ error: "no valid fields to update" }, { status: 400 });
