@@ -31,18 +31,21 @@
 
 **npm audit (omit=dev):** postcss via next (moderate; fix forçado quebraria Next), ws high (avaliar na Fase 2 sem `--force`).
 
+### Fase 2 — Runtime/banco — concluída (local)
+
+- `scripts/demo-seed.ts` — 25 vagas sintéticas determinísticas + perfil demo
+- `npm run demo:seed` / `demo:reset` (reset exige `CONFIRM=1` e URL com `demo`)
+- Índices em `jobs` (status, score, posted_at, source, hash, unique source+source_id)
+- Migration SQL `0001_jobs_indexes.sql` + schema Drizzle
+- `drizzle.config.ts` usa `DATABASE_URL`
+- Docs: `docs/deployment.md`, `docs/demo-mode.md`, ADRs 001/002
+- Validado: `db:push` + `demo:seed` em `file:demo.db`; typecheck OK
+
 ### Commits
 
-- `fix(security): harden API inputs and database mutations` (esta sessão)
+- `fix(security): harden API inputs and database mutations`
+- `feat(platform): add reproducible database and demo configuration` (pendente)
 
-### Como retomar
+### Próxima
 
-1. `AGENTS.md` → `.cursor/rules/00-prism-engineering.mdc` → este arquivo → `03-decisions.md`
-2. `git status` + `git log -1`
-3. **Próxima:** Fase 2 — runtime/banco (`demo:seed`, docs deploy, indices, DATABASE_URL)
-
-### Pendências Fase 1 menores
-
-- Zod formal (allowlists manuais cobrem o crítico)
-- Rate limiting HTTP (demo bloqueia mutações; sync local ainda aberto fora de demo)
-- Atualizar `ws` com cuidado (sem `audit fix --force`)
+Fase 3 (APIs/TS) ou Fase 5 CI polish + README parcial — preferir continuar plataforma/docs visíveis.

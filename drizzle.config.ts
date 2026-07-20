@@ -1,10 +1,10 @@
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-  schema: "./src/db/schema.ts",
+  schema: ["./src/db/schema.ts", "./src/db/schema/freelance.ts"],
   out: "./src/db/migrations",
   dialect: "sqlite",
   dbCredentials: {
-    url: "./prism.db",
+    url: process.env.DATABASE_URL?.replace(/^file:/, "") || "./prism.db",
   },
 });
