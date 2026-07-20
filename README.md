@@ -122,7 +122,7 @@ CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (Node 22).
 
 Strategy and checklist: [`docs/deployment.md`](docs/deployment.md) · [`docs/demo-mode.md`](docs/demo-mode.md)
 
-Hosted read-only demo: [prism-ruddy-sigma.vercel.app](https://prism-ruddy-sigma.vercel.app) (`PRISM_DEMO_MODE=1`, bundled SQLite). Jobs are synthetic; profile may reflect the owner on this private URL.
+Hosted read-only demo: [prism-ruddy-sigma.vercel.app](https://prism-ruddy-sigma.vercel.app) (`PRISM_DEMO_MODE=1`, bundled SQLite). Dataset is curated from the owner's personal radar (high/good fit jobs + profile); mutations stay blocked.
 
 ---
 

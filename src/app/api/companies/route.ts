@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { monitoredCompanies } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { demoModeBlockedResponse, isDemoMode } from "@/lib/api-guards";
 
 function normalizeCompanyName(name: string): string {
   return name
@@ -15,6 +16,10 @@ function normalizeCompanyName(name: string): string {
 }
 
 export async function POST(request: Request) {
+  if (isDemoMode()) {
+    return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+  }
+
   try {
     const body = await request.json().catch(() => ({}));
     

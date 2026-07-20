@@ -23,12 +23,20 @@ PRISM_DEMO_MODE=true
 
 ## Dataset
 
+Curated personal radar (default on the public Vercel URL):
+
 ```bash
-DATABASE_URL=file:demo.db npm run demo:seed
-DATABASE_URL=file:demo.db CONFIRM=1 npm run demo:reset
+# after local personal sync
+npm run demo:from-personal   # writes data/demo.db (high/good + top partial)
 ```
 
-O seed é **sintético e determinístico** (IDs `demo-job-*`). Não usa candidaturas reais.
+Synthetic fallback (CI / no prism.db):
+
+```bash
+PRISM_FORCE_SYNTHETIC_DEMO=1 npm run demo:prepare
+```
+
+Demo remains **read-only** when `PRISM_DEMO_MODE=1`.
 
 ## Por que não há auth ainda
 

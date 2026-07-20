@@ -1,5 +1,6 @@
 import type { RawJobData } from "@/types";
 import { saveJobs, logConnectorRun } from "./utils";
+import { inferExperienceAndContract } from "./job-infer";
 
 const COMPANIES = [
   { slug: "cloudwalk", name: "CloudWalk" },
@@ -7,6 +8,15 @@ const COMPANIES = [
   { slug: "contabilizei", name: "Contabilizei" },
   { slug: "neon", name: "Neon" },
   { slug: "omie", name: "Omie" },
+  { slug: "elo7", name: "Elo7" },
+  { slug: "pipefy", name: "Pipefy" },
+  { slug: "contaazul", name: "Conta Azul" },
+  { slug: "beeviral", name: "BeeViral" },
+  { slug: "tractian", name: "Tractian" },
+  { slug: "cargo-x", name: "CargoX" },
+  { slug: "meliuz", name: "Méliuz" },
+  { slug: "loggi", name: "Loggi" },
+  { slug: "madeiramadeira", name: "MadeiraMadeira" },
 ];
 
 export async function fetchLever(): Promise<{ new: number; duplicate: number; total: number }> {
@@ -16,13 +26,10 @@ export async function fetchLever(): Promise<{ new: number; duplicate: number; to
 
   for (const company of COMPANIES) {
     try {
-      const res = await fetch(
-        `https://api.lever.co/v0/postings/${company.slug}?mode=json`,
-        {
-          headers: { "User-Agent": "Prism/1.0" },
-          signal: AbortSignal.timeout(10000),
-        }
-      );
+      const res = await fetch(`https://api.lever.co/v0/postings/${company.slug}?mode=json`, {
+        headers: { "User-Agent": "Prism/1.0 (personal job radar)" },
+        signal: AbortSignal.timeout(12000),
+      });
       if (!res.ok) continue;
 
       const data = await res.json();
@@ -31,23 +38,28 @@ export async function fetchLever(): Promise<{ new: number; duplicate: number; to
       for (const job of items) {
         const title = job.text || "";
         if (!title) continue;
+        const desc = job.descriptionPlain || job.description || "";
+        const loc = job.categories?.location || "Remote";
+        const inferred = inferExperienceAndContract(title, desc);
+        const isRemote = /remote|remoto/i.test(String(loc)) || /remote|remoto/i.test(title);
 
         allJobs.push({
           title,
           company: company.name,
-          description: job.descriptionPlain || job.description || "",
-          location: job.categories?.location || "Remote",
-          locationType: "remote",
-          contractType: "clt",
-          technologies: extractTech(title, job.descriptionPlain || ""),
+          description: desc,
+          location: loc,
+          locationType: isRemote ? "remote" : "hybrid",
+          contractType: inferred.contractType,
+          experienceLevel: inferred.experienceLevel,
+          technologies: extractTech(title, desc),
           source: "lever",
           sourceId: job.id || String(job.hostedUrl || ""),
           url: job.hostedUrl || `https://jobs.lever.co/${company.slug}`,
           postedAt: job.createdAt ? new Date(job.createdAt).toISOString() : undefined,
         });
       }
-    } catch (err: any) {
-      lastError = err.message;
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
     }
   }
 
@@ -57,7 +69,23 @@ export async function fetchLever(): Promise<{ new: number; duplicate: number; to
 }
 
 function extractTech(title: string, content: string): string[] {
-  const techs = ["Python", "SQL", "TypeScript", "JavaScript", "React", "Node.js", "Next.js", "PostgreSQL", "Docker", "AWS", "Machine Learning", "Data Science", "Pandas", "FastAPI", "Django", "Go", "Kubernetes", "TensorFlow", "PyTorch", "GraphQL", "API", "Full-Stack", "R", "Statistics", "Analytics", "Excel", "LLM", "AI", "GPT", "RAG", "LangChain"];
-  const text = `${title} ${content}`;
-  return techs.filter((t) => text.toLowerCase().includes(t.toLowerCase()));
+  const techs = [
+    "Python",
+    "SQL",
+    "TypeScript",
+    "JavaScript",
+    "React",
+    "Node.js",
+    "Next.js",
+    "PostgreSQL",
+    "Docker",
+    "AWS",
+    "FastAPI",
+    "Go",
+    "GraphQL",
+    "Full-Stack",
+    "Analytics",
+  ];
+  const text = `${title} ${content}`.toLowerCase();
+  return techs.filter((t) => text.includes(t.toLowerCase()));
 }

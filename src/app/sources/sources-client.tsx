@@ -19,6 +19,8 @@ interface ConnectorInfo {
   id: string;
   name: string;
   jobCount: number;
+  reliable?: boolean;
+  description?: string;
 }
 
 interface ConnectorLog {
@@ -60,34 +62,47 @@ interface TargetCompany {
 }
 
 const ICON_MAP: Record<string, any> = {
-  remoteok: Globe, weworkremotely: Globe, greenhouse: Cable,
-  lever: Cable, remotive: Database, hackernews: Terminal,
-  arbeitnow: Search, "linkedin-rss": ExternalLink,
-  wellfound: Bot, jobicy: Globe,
-  "remote-co": Globe, "google-jobs": Search, "4dayweek": Globe,
-  nodesk: Globe, revelo: Database, himalayas: Globe,
-  stackoverflow: Terminal, gupy: Database,
+  remoteok: Globe,
+  weworkremotely: Globe,
+  greenhouse: Cable,
+  lever: Cable,
+  ashby: Cable,
+  remotive: Database,
+  hackernews: Terminal,
+  arbeitnow: Search,
+  linkedin_rss: ExternalLink,
+  wellfound: Bot,
+  jobicy: Globe,
+  "remote-co": Globe,
+  google_jobs: Search,
+  "4dayweek": Globe,
+  nodesk: Globe,
+  revelo: Database,
+  himalayas: Globe,
+  stackoverflow: Terminal,
+  gupy: Database,
 };
 
 const DESC_MAP: Record<string, string> = {
-  remoteok: "API pública com vagas remotas de tecnologia (18 tags em paralelo)",
-  weworkremotely: "Maior comunidade de vagas remotas (6 feeds RSS de categoria)",
-  greenhouse: "ATS integrado — Nubank, Mercado Livre, iFood e +",
-  lever: "ATS integrado — Stripe, Linear, Notion, Anthropic e +",
-  remotive: "API pública com 5 categorias (dev, data, devops, product, design)",
-  hackernews: "Thread mensal 'Who is Hiring' do Hacker News — vagas de alto nível",
-  arbeitnow: "API pública com foco em vagas europeias e remotas",
-  "linkedin-rss": "Busca por 10 queries diferentes no LinkedIn",
-  wellfound: "Vagas de startups (AngelList/Wellfound)",
-  jobicy: "Feeds RSS com categorias de tech + design + marketing",
-  "remote-co": "Feed RSS do Remote.co — vagas tech-agnostic",
-  "google-jobs": "Busca no Google Jobs por 10 queries de tecnologia",
-  "4dayweek": "API de empresas com semana de 4 dias de trabalho",
-  nodesk: "Feed RSS do Nodesk — vagas remotas em tecnologia",
-  revelo: "Plataforma brasileira de vagas tech (busca por 10 termos)",
-  himalayas: "API pública do Himalayas — vagas remotas globais",
-  stackoverflow: "Feeds RSS do Stack Overflow Jobs (10 queries)",
-  gupy: "API pública da Gupy — vagas brasileiras de tecnologia",
+  remoteok: "API pública com vagas remotas de tecnologia",
+  weworkremotely: "RSS por categoria — comunidade remota",
+  greenhouse: "Boards oficiais Greenhouse (empresas BR/tech)",
+  lever: "Boards oficiais Lever",
+  ashby: "Boards oficiais Ashby",
+  remotive: "API de vagas remotas",
+  hackernews: "Who is hiring / Algolia",
+  arbeitnow: "API job board",
+  linkedin_rss: "Scrape frágil — use só se necessário",
+  wellfound: "Scrape frágil",
+  jobicy: "RSS remota",
+  "remote-co": "RSS remota",
+  google_jobs: "Scrape frágil",
+  "4dayweek": "API 4-day week",
+  nodesk: "RSS remota",
+  revelo: "API não oficial — pode falhar",
+  himalayas: "API remota",
+  stackoverflow: "Produto descontinuado — frequentemente vazio",
+  gupy: "Career pages Gupy (empresas BR) — portal search API offline",
 };
 
 export function SourcesClient() {
@@ -363,11 +378,19 @@ export function SourcesClient() {
   const syncAll = async () => {
     setSyncingAll(true);
     try {
-      const res = await fetch("/api/connectors", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const res = await fetch("/api/connectors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "reliable" }),
+      });
       const data = await res.json();
-      if (data.ok) {
+      if (res.status === 403) {
+        toast(data.message || "Demo mode: sync bloqueado", "error");
+      } else if (data.ok) {
         const total = Object.values(data.results || {}).reduce((a: number, r: any) => a + (r?.new || 0), 0);
-        toast(`Sincronização concluída — ${total} novas vagas`, "success");
+        toast(`Sincronização (fontes confiáveis) — ${total} novas vagas`, "success");
+      } else {
+        toast(data.errors?.[0] || "Erro ao sincronizar", "error");
       }
       queryClient.invalidateQueries({ queryKey: ["sources-stats"] });
       queryClient.invalidateQueries({ queryKey: ["sources-jobs"] });
@@ -687,11 +710,13 @@ export function SourcesClient() {
       {activeTab === "channels" && (
         <>
           {/* Sincronizar Tudo */}
-          <div className="flex justify-between items-center mb-4 bg-bg p-3 rounded-lg border border-border">
-            <span className="text-xs text-text-secondary">Sincronizar todos os conectores de vagas em background</span>
+          <div className="flex justify-between items-center gap-3 mb-4 bg-bg p-3 rounded-lg border border-border">
+            <span className="text-xs text-text-secondary">
+              Sincroniza fontes confiáveis (APIs/RSS). Scrapers frágeis ficam de fora — rode um a um se precisar.
+            </span>
             <Button variant="primary" size="sm" onClick={syncAll} disabled={syncingAll}>
               {syncingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              {syncingAll ? "Sincronizando..." : "Sincronizar tudo"}
+              {syncingAll ? "Sincronizando..." : "Sincronizar confiáveis"}
             </Button>
           </div>
 
@@ -715,6 +740,9 @@ export function SourcesClient() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-semibold text-text-primary truncate">{c.name}</span>
+                            {c.reliable === false && (
+                              <Badge className="text-[10px] shrink-0">experimental</Badge>
+                            )}
                             {c.jobCount > 0 && <Badge variant="accent" className="text-[10px] shrink-0">{c.jobCount} vagas</Badge>}
                             <HI className={`h-3 w-3 shrink-0 ${healthColor[h.status]}`} title={h.label} />
                             <span className="text-[10px] text-text-tertiary">
@@ -722,7 +750,9 @@ export function SourcesClient() {
                               • Conv: <span className="text-accent font-bold">{conversion}%</span>
                             </span>
                           </div>
-                          <p className="text-[11px] text-text-secondary truncate mt-0.5">{DESC_MAP[c.id] || ""}</p>
+                          <p className="text-[11px] text-text-secondary truncate mt-0.5">
+                            {c.description || DESC_MAP[c.id] || ""}
+                          </p>
                           {h.lastLog && (
                             <p className="text-[10px] text-text-tertiary mt-1">
                               Sincronizado: {new Date(h.lastLog.runAt).toLocaleString("pt-BR")} — {h.lastLog.jobsNew || 0} novas, {h.lastLog.jobsDuplicate || 0} dup. {h.lastLog.durationMs ? `(${(h.lastLog.durationMs / 1000).toFixed(1)}s)` : ""}

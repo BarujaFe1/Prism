@@ -44,6 +44,8 @@ yarn-error.log*
 *.sqlite
 *.sqlite3
 !data/.gitkeep
+# Curated read-only demo shipped with Vercel builds (high/good jobs + profile)
+!data/demo.db
 /exports/
 /backups/
 
