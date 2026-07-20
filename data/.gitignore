@@ -1,0 +1,4 @@
+# Generated at build when prism.db is present; otherwise keep curated committed demo.
+*
+!.gitkeep
+!demo.db
