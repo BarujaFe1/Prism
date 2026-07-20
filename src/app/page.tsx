@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { JobWithStatus, SettingsData, ProfileData } from "@/types";
 import { locationTypeLabel, experienceLevelLabel, timeAgo } from "@/lib/utils";
+import { selectTopOpportunities } from "@/lib/focus/daily-actions";
 
 const MODALIDADE_FILTERS = ["remote", "hybrid", "onsite"];
 const SENIORITY_FILTERS = ["internship", "trainee", "junior", "mid", "senior", "lead"];
@@ -131,20 +132,7 @@ export default function RadarPage() {
 
   const topThreeJobs = useMemo(() => {
     if (!allJobs) return [];
-    return allJobs
-      .filter((j) => {
-        if (j.status !== "new" && j.status !== "saved") return false;
-        let details: any = {};
-        try {
-          details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails || {};
-        } catch {}
-        const eligibility = details.eligibility || "";
-        if (["over_senior", "wrong_track", "requires_degree", "sales_business_role", "freelance_noise", "hard_no"].includes(eligibility)) return false;
-        if (details.decisionLabel === "SUPPRESSED") return false;
-        return (j.score ?? 0) >= 0.50;
-      })
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-      .slice(0, 3);
+    return selectTopOpportunities(allJobs, 3);
   }, [allJobs]);
 
   const topThreeIds = useMemo(() => new Set(topThreeJobs.map(j => j.id)), [topThreeJobs]);

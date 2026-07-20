@@ -168,6 +168,10 @@ export interface SettingsData {
   alertHighFitDays: number;
   dailyBriefingEnabled: boolean;
   lastBackupAt: string | null;
+  dontDoNow?: string[];
+  wipMaxPreparing?: number | null;
+  wipMaxLearning?: number | null;
+  wipMaxPortfolioProjects?: number | null;
 }
 
 export interface ApplicationTask {

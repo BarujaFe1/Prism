@@ -1,0 +1,20 @@
+# Personalization (Felipe)
+
+## Defaults
+
+- UI/copy: Portuguese (Brazil).
+- Give one primary recommendation, then alternatives.
+- Max three main daily actions; explain career impact.
+- Do not re-ask facts already in profile/DB.
+- Record uncertainty (`hypothesis` / `unknown`) instead of inventing.
+
+## Working style
+
+- Broad context OK, but ship a clear next step.
+- Prefer deepening an existing project over starting a new repo.
+- Flag over-engineering: Career ROI before new features.
+- After AI-assisted changes, leave “what Felipe must be able to explain”.
+
+## Geography / markets
+
+Configurable mix (default): Brazil ~75%, Portugal/CPLP ~15%, LatAm/intl ~10%. Remote + hybrid preferred; onsite only São Carlos unless exceptional.

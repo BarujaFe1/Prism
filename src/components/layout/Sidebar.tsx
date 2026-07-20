@@ -13,16 +13,20 @@ import {
   Moon,
   Sun,
   Briefcase,
+  SunMedium,
+  FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./ThemeProvider";
 import { useUIStore } from "@/lib/store";
 
 const navItems = [
+  { href: "/today", label: "Hoje", icon: SunMedium },
   { href: "/", label: "Radar", icon: Radar },
   { href: "/explore", label: "Explorar", icon: Compass },
   { href: "/freelas", label: "Freelas", icon: Briefcase, freelance: true },
   { href: "/pipeline", label: "Pipeline", icon: GitPullRequestArrow },
+  { href: "/evidence", label: "Evidências", icon: FolderKanban },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/sources", label: "Fontes", icon: Cable },
   { href: "/profile", label: "Perfil", icon: User },
@@ -43,14 +47,14 @@ export function Sidebar() {
     >
       <div className={cn("flex items-center px-5 pt-6 pb-4", !sidebarOpen && "justify-center px-0")}>
         {sidebarOpen ? (
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/today" className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
               <span className="text-xs font-bold text-white">P</span>
             </div>
             <span className="text-sm font-semibold tracking-tight text-text-primary">Prism</span>
           </Link>
         ) : (
-          <Link href="/" className="flex items-center justify-center">
+          <Link href="/today" className="flex items-center justify-center">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
               <span className="text-xs font-bold text-white">P</span>
             </div>
