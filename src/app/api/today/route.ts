@@ -7,6 +7,7 @@ import {
   buildDailyActions,
   clampWipWarning,
   computeWip,
+  selectByVertical,
   selectFollowUpsOverdue,
   selectTopOpportunities,
 } from "@/lib/focus/daily-actions";
@@ -48,6 +49,8 @@ export async function GET() {
     return NextResponse.json({
       actions,
       topJobs: selectTopOpportunities(allJobs as any, 5),
+      topDev: selectByVertical(allJobs as any, "dev", 5),
+      topDados: selectByVertical(allJobs as any, "dados", 5),
       followUpsOverdue: selectFollowUpsOverdue(allJobs as any, followUpDays),
       wip,
       wipWarning: clampWipWarning(wip),

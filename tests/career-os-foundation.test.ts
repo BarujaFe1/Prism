@@ -39,12 +39,19 @@ describe("evidence coverage heatmap", () => {
 });
 
 describe("career tracks seed", () => {
-  it("includes Full-Stack as priority 1 and active", () => {
-    const primary = DEFAULT_CAREER_TRACKS.find((t) => t.key === "fullstack_product");
-    assert.ok(primary);
-    assert.equal(primary!.priority, 1);
-    assert.equal(primary!.active, true);
-    assert.ok(DEFAULT_CAREER_TRACKS.length >= 6);
+  it("treats Dev and Dados as equal primary verticals", () => {
+    const dev = DEFAULT_CAREER_TRACKS.find((t) => t.key === "fullstack_product");
+    const dados = DEFAULT_CAREER_TRACKS.find((t) => t.key === "data_analytics");
+    assert.ok(dev);
+    assert.ok(dados);
+    assert.equal(dev!.priority, 1);
+    assert.equal(dados!.priority, 1);
+    assert.equal(dev!.weight, 1);
+    assert.equal(dados!.weight, 1);
+    assert.equal(dev!.active, true);
+    assert.equal(dados!.active, true);
+    assert.ok(dev!.label.toLowerCase().includes("dev"));
+    assert.ok(dados!.label.toLowerCase().includes("dados"));
   });
 });
 
@@ -55,7 +62,7 @@ describe("focus guard daily actions", () => {
     company: "Orbita",
     status: "new",
     score: 0.82,
-    scoreDetails: { eligibility: "eligible" },
+    scoreDetails: { eligibility: "eligible", domain: "fullstack_backend", vertical: "dev" },
     updatedAt: new Date().toISOString(),
   } as any;
 
@@ -80,6 +87,35 @@ describe("focus guard daily actions", () => {
     );
     assert.equal(tops.length, 1);
     assert.equal(tops[0].id, "j1");
+  });
+
+  it("diversifies Dev and Dados in top opportunities", () => {
+    const jobs = [
+      {
+        ...baseJob,
+        id: "dev1",
+        score: 0.95,
+        scoreDetails: { eligibility: "eligible", domain: "fullstack_backend", vertical: "dev" },
+      },
+      {
+        ...baseJob,
+        id: "dev2",
+        score: 0.94,
+        title: "Software Engineer Jr",
+        scoreDetails: { eligibility: "eligible", domain: "software_engineering", vertical: "dev" },
+      },
+      {
+        ...baseJob,
+        id: "dados1",
+        score: 0.9,
+        title: "Analista de Dados Jr",
+        scoreDetails: { eligibility: "eligible", domain: "data", vertical: "dados" },
+      },
+    ];
+    const tops = selectTopOpportunities(jobs, 3);
+    const ids = tops.map((j) => j.id);
+    assert.ok(ids.includes("dev1"));
+    assert.ok(ids.includes("dados1"));
   });
 
   it("warns when WIP exceeds limits", () => {

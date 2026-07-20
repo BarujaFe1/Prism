@@ -1,5 +1,6 @@
 import type { ProfileData, ScoreDetails, LocationType, ContractType, ExperienceLevel } from "@/types";
 import { checkEligibility, normalizeJobTextForScoring } from "../lib/scoring/scoring-rules";
+import { domainToVertical, verticalDomainScore } from "@/lib/career/verticals";
 
 const TECH_KEYWORDS = [
   "TypeScript", "JavaScript", "Python", "Java", "Go", "Rust", "C++", "C#",
@@ -89,7 +90,7 @@ export function classifyDomain(title: string): string {
   if (/\b(produto de dados|data product|data quality|data governance|data profiling|data ops|data automation|qualidade de dados|governança de dados)\b/i.test(t)) {
     return "produto_dados";
   }
-  if (/\b(estatistica|estatístico|statistics|experimentação|experimentacao|teste a\/b|ab testing|causal inference|inference|inferência|modelagem|probabilidade|probability)\b/i.test(t)) {
+  if (/\b(estat[ií]stica|estat[ií]stico|statistics|experimenta[cç][aã]o|teste a\/b|ab testing|causal inference|inference|infer[eê]ncia|modelagem|probabilidade|probability)\b/i.test(t)) {
     return "estatistica";
   }
   if (/\b(ia|ai|inteligência artificial|inteligencia artificial|machine learning|ml|llm|generative ai|prompt engineering|ai evaluation|data labeling|evals|datasets|rag)\b/i.test(t)) {
@@ -269,20 +270,13 @@ export function computeScore(job: {
   }
 
   // --- 4. Subscores Calculations for Actionability ---
-  // A. Domain / Track Match (20% weight) — full-stack/product primeiro, dados ainda fortes
+  // A. Domain / Track Match (20% weight) — Dev e Dados com esforço igual
+  const vertical = domainToVertical(domain);
   let domainScore = 0.5;
-  if (
-    ["fullstack_backend", "software_engineering", "frontend", "fullstack_dados"].includes(domain)
-  ) {
-    domainScore = 1.0;
-  } else if (
-    ["data_engineering", "data", "bi_analytics", "produto_dados", "estatistica", "ia_aplicada"].includes(
-      domain
-    )
-  ) {
-    domainScore = 0.9;
-  } else if (isIncompatibleDomain) {
+  if (isIncompatibleDomain) {
     domainScore = 0.0;
+  } else if (vertical === "dev" || vertical === "dados") {
+    domainScore = verticalDomainScore(vertical);
   }
 
   // B. Eligibility Score (25% weight)
@@ -408,7 +402,7 @@ export function computeScore(job: {
     }
   }
 
-  const explanationDetail = `Classificação de Trilha: ${domain}. Elegibilidade: ${eligibility}. Evidências do perfil localizadas: ${matchedEvidences.join(", ") || "nenhuma"}.`;
+  const explanationDetail = `Vertente: ${vertical}. Domínio: ${domain}. Elegibilidade: ${eligibility}. Evidências: ${matchedEvidences.join(", ") || "nenhuma"}.`;
 
   const missingGaps = Array.from(jobTechs).filter(t => !profileSkills.includes(t)).map(capitalize);
 
@@ -425,6 +419,7 @@ export function computeScore(job: {
       scoreLabel,
       fitLabel,
       domain,
+      vertical,
       penalties,
       warnings,
       explanation,

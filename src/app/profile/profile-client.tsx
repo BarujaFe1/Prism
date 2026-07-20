@@ -551,47 +551,84 @@ export function ProfileClient() {
           <Card id="career-tracks-card">
             <CardHeader>
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-text-primary">Career Tracks</h2>
-                <Link href="/evidence" className="text-[11px] text-accent">
-                  Evidence Vault →
+                <h2 className="text-sm font-semibold text-text-primary">Duas vertentes</h2>
+                <Link href="/today" className="text-[11px] text-accent">
+                  Hoje →
                 </Link>
               </div>
               <p className="text-[11px] text-text-tertiary">
-                Ative tracks aderentes. Full-Stack/Product é o principal; Data permanece forte.
+                Esforço igual e separado: <strong className="text-text-secondary font-medium">Dev</strong> (software)
+                e <strong className="text-text-secondary font-medium">Dados</strong> (analista · Estatística USP).
+                Sub-tracks reforçam uma vertente; não competem com ela.
               </p>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
               {careerTracks.length === 0 && (
                 <p className="text-xs text-text-tertiary">
                   Nenhum track. Rode <code className="text-[10px]">npm run career:seed</code>.
                 </p>
               )}
-              {careerTracks.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border/50 px-3 py-2"
-                >
-                  <div className="text-left min-w-0">
-                    <p className="text-sm text-text-primary truncate">
-                      {t.priority}. {t.label}
-                    </p>
-                    {t.notes && (
-                      <p className="text-[10px] text-text-tertiary line-clamp-1">{t.notes}</p>
+              {(["dev", "dados"] as const).map((vert) => {
+                const primaryKey = vert === "dev" ? "fullstack_product" : "data_analytics";
+                const primary = careerTracks.find((t) => t.key === primaryKey);
+                const subs = careerTracks.filter((t) => {
+                  if (vert === "dev") return ["frontend", "backend", "mobile"].includes(t.key);
+                  return t.key === "ai_automation";
+                });
+                return (
+                  <div key={vert} className="rounded-xl border border-border/60 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-text-primary">
+                          {vert === "dev" ? "Dev" : "Dados"}
+                        </p>
+                        <p className="text-[10px] text-text-tertiary mt-0.5">
+                          {vert === "dev"
+                            ? "Full-Stack · Frontend · Backend · Product"
+                            : "Analista · BI · Estatística USP · Data products"}
+                        </p>
+                      </div>
+                      {primary && (
+                        <button
+                          type="button"
+                          onClick={() => toggleTrack(primary.id, !primary.active)}
+                          className={`text-[11px] px-2 py-1 rounded-md shrink-0 ${
+                            primary.active
+                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                              : "bg-bg-elevated text-text-tertiary"
+                          }`}
+                        >
+                          {primary.active ? "Ativo" : "Off"}
+                        </button>
+                      )}
+                    </div>
+                    {primary && (
+                      <p className="text-[11px] text-text-secondary">{primary.label}</p>
+                    )}
+                    {subs.length > 0 && (
+                      <div className="space-y-1.5 pt-1 border-t border-border/40">
+                        <p className="text-[10px] text-text-tertiary">Sub-tracks</p>
+                        {subs.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] text-text-secondary truncate">{t.label}</p>
+                            <button
+                              type="button"
+                              onClick={() => toggleTrack(t.id, !t.active)}
+                              className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
+                                t.active
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : "bg-bg-elevated text-text-tertiary"
+                              }`}
+                            >
+                              {t.active ? "On" : "Off"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleTrack(t.id, !t.active)}
-                    className={`text-[11px] px-2 py-1 rounded-md shrink-0 ${
-                      t.active
-                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                        : "bg-bg-elevated text-text-tertiary"
-                    }`}
-                  >
-                    {t.active ? "Ativo" : "Off"}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
 

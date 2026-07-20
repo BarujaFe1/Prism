@@ -1,4 +1,5 @@
 import type { JobWithStatus } from "@/types";
+import { domainToVertical, type CareerVertical } from "@/lib/career/verticals";
 
 export type DailyAction = {
   id: string;
@@ -7,6 +8,7 @@ export type DailyAction = {
   reason: string;
   href: string;
   score?: number;
+  vertical?: CareerVertical;
 };
 
 export type WipSnapshot = {
@@ -37,8 +39,15 @@ function scoreDetails(job: JobWithStatus): Record<string, unknown> {
   }
 }
 
-/** Top opportunities worth acting on today (max 3). */
-export function selectTopOpportunities(jobs: JobWithStatus[], limit = 3): JobWithStatus[] {
+function jobVertical(job: JobWithStatus): CareerVertical {
+  const details = scoreDetails(job);
+  if (details.vertical === "dev" || details.vertical === "dados" || details.vertical === "other") {
+    return details.vertical;
+  }
+  return domainToVertical(typeof details.domain === "string" ? details.domain : null);
+}
+
+function eligiblePool(jobs: JobWithStatus[]): JobWithStatus[] {
   return jobs
     .filter((j) => {
       if (j.status !== "new" && j.status !== "saved") return false;
@@ -48,7 +57,61 @@ export function selectTopOpportunities(jobs: JobWithStatus[], limit = 3): JobWit
       if (details.decisionLabel === "SUPPRESSED") return false;
       return (j.score ?? 0) >= 0.5;
     })
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+}
+
+/**
+ * Top opportunities with Dev/Dados diversification when both exist.
+ * Ensures at least one of each vertical in the top N when possible.
+ */
+export function selectTopOpportunities(jobs: JobWithStatus[], limit = 3): JobWithStatus[] {
+  const pool = eligiblePool(jobs);
+  if (pool.length <= limit) return pool;
+
+  const byVertical = {
+    dev: pool.filter((j) => jobVertical(j) === "dev"),
+    dados: pool.filter((j) => jobVertical(j) === "dados"),
+    other: pool.filter((j) => jobVertical(j) === "other"),
+  };
+
+  const picked: JobWithStatus[] = [];
+  const used = new Set<string>();
+
+  const take = (list: JobWithStatus[]) => {
+    for (const j of list) {
+      if (picked.length >= limit) return;
+      if (used.has(j.id)) continue;
+      used.add(j.id);
+      picked.push(j);
+      return;
+    }
+  };
+
+  // Equal effort: seat for Dev and Dados first when both have candidates
+  if (byVertical.dev.length && byVertical.dados.length) {
+    take(byVertical.dev);
+    take(byVertical.dados);
+  }
+
+  // Fill remaining by overall score
+  for (const j of pool) {
+    if (picked.length >= limit) break;
+    if (used.has(j.id)) continue;
+    used.add(j.id);
+    picked.push(j);
+  }
+
+  return picked;
+}
+
+/** Split ranked lists for dual-vertical UI panels */
+export function selectByVertical(
+  jobs: JobWithStatus[],
+  vertical: "dev" | "dados",
+  limit = 5
+): JobWithStatus[] {
+  return eligiblePool(jobs)
+    .filter((j) => jobVertical(j) === vertical)
     .slice(0, limit);
 }
 
@@ -80,19 +143,23 @@ export function buildDailyActions(input: {
       reason: `${j.company} · sem atualização há ${input.followUpDays ?? 5}+ dias`,
       href: `/jobs/${j.id}`,
       score: j.score ?? undefined,
+      vertical: jobVertical(j),
     });
   }
 
   const tops = selectTopOpportunities(input.jobs, 3);
   for (const j of tops) {
     if (actions.length >= 3) break;
+    const v = jobVertical(j);
+    const vLabel = v === "dev" ? "Dev" : v === "dados" ? "Dados" : "Radar";
     actions.push({
       id: `top-${j.id}`,
       kind: "apply",
       title: j.title,
-      reason: `Score ${(j.score ?? 0).toFixed(2)} · ${j.company}`,
+      reason: `${vLabel} · Score ${(j.score ?? 0).toFixed(2)} · ${j.company}`,
       href: `/jobs/${j.id}`,
       score: j.score ?? undefined,
+      vertical: v,
     });
   }
 
