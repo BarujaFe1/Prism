@@ -7,7 +7,7 @@ const NON_TECH_ROLES = [
   "photo editing", "photo retouch", "photographer",
   "social media", "marketing", "digital marketing", "seo", "sem", "content marketing",
   "copywriter", "copy writing", "content writer", "blog writer", "article writer", "ghostwriter",
-  "transcri", "translation", "translator", "proofreading", "proofread",
+  "transcri", "translation", "translator", "proofreading", "proofread", "proofreader", "copyeditor",
   "virtual assistant", "admin", "administrative", "data entry", "customer service", "support",
   "sales", "vendas", "telemarketing", "lead generation", "cold email",
   "hr", "recrutamento", "recruitment", "recruiting",
@@ -15,6 +15,7 @@ const NON_TECH_ROLES = [
   "voice over", "voiceover", "narration", "audio editing",
   "architecture", "architect", "civil engineering", "engenharia civil",
   "legal", "lawyer", "advogado",
+  "amazon ppc", "ppc", "amazon ads", "editorial", "content manager", "wordpress", "elementor", "shopify", "no-code", "nocode", "customer support", "support manager"
 ];
 
 export function scoreFreelanceProject(

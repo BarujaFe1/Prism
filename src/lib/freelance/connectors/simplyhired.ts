@@ -1,5 +1,5 @@
 import type { FreelanceProjectData, FreelancePlatform, FreelanceEngagementType, FreelanceExperienceLevel } from "../types";
-import { saveFreelanceBatch, logFreelanceSync, generateSimpleHash, inferExpiresAt, sanitizeDate } from "../utils";
+import { saveFreelanceBatch, logFreelanceSync, generateSimpleHash, inferExpiresAt, sanitizeDate, parseCompensation } from "../utils";
 
 const SEARCH_QUERIES = [
   "freelance developer remote",
@@ -111,21 +111,6 @@ function extractLocation(job: any): string | undefined {
   return loc;
 }
 
-function extractSalaryInfo(job: any): { min?: number; max?: number; currency?: string } {
-  const salary = job.salaryInfo || "";
-  if (!salary) return {};
-
-  const match = salary.match(/\$([\d,]+)\s*-\s*\$([\d,]+)/);
-  if (match) {
-    return {
-      min: parseInt(match[1].replace(/,/g, "")),
-      max: parseInt(match[2].replace(/,/g, "")),
-      currency: "USD",
-    };
-  }
-  return {};
-}
-
 function extractExperienceLevel(requirements: string[]): FreelanceExperienceLevel | undefined {
   const levels = requirements.map((r: string) => r.toLowerCase());
   if (levels.some((r) => r.includes("senior") || r.includes("lead") || r.includes("principal") || r.includes("staff"))) return "expert";
@@ -171,9 +156,34 @@ export async function fetchSimplyHired(): Promise<{ new: number; duplicate: numb
           .map((t: string) => JOB_TYPE_MAP[t.toLowerCase().trim()])
           .find(Boolean);
         const experienceLevel = extractExperienceLevel(job.requirements || []);
-        const salary = extractSalaryInfo(job);
+        
+        const salaryText = job.salaryInfo || "";
+        const parsedSal = parseCompensation(salaryText);
+        
+        let hourlyRateMin: number | undefined = undefined;
+        let hourlyRateMax: number | undefined = undefined;
+        let budgetMin: number | undefined = undefined;
+        let budgetMax: number | undefined = undefined;
+        
+        if (parsedSal.type === "hourly") {
+          hourlyRateMin = parsedSal.min;
+          hourlyRateMax = parsedSal.max;
+        } else {
+          budgetMin = parsedSal.min;
+          budgetMax = parsedSal.max;
+        }
 
-        const now = Date.now();
+        let needsManualCompensationReview = false;
+        let compensationParseConfidence = parsedSal.confidence;
+        if (parsedSal.type === "hourly" && parsedSal.currency === "USD") {
+          if (parsedSal.max && parsedSal.max > 250) {
+            needsManualCompensationReview = true;
+            compensationParseConfidence = 0.05;
+          } else if (parsedSal.max && parsedSal.max > 150) {
+            compensationParseConfidence = 0.1;
+          }
+        }
+
         const postedAt = job.dateOnIndeed
           ? sanitizeDate(job.dateOnIndeed) || new Date().toISOString()
           : new Date().toISOString();
@@ -188,16 +198,21 @@ export async function fetchSimplyHired(): Promise<{ new: number; duplicate: numb
           description: job.snippet || "",
           url: `https://www.simplyhired.com${job.encodedUrl || job.botUrl || `/job/${jobKey}`}`,
           platform: "simplyhired" as FreelancePlatform,
-          projectType: engagementType === "full-time" ? "hourly" : engagementType === "occasional" ? "fixed" : "hourly",
+          projectType: parsedSal.type === "hourly" ? "hourly" : parsedSal.type === "fixed_project" ? "fixed" : "hourly",
           engagementType,
           experienceLevel,
           skills,
-          hourlyRateMin: salary.min,
-          hourlyRateMax: salary.max,
+          hourlyRateMin,
+          hourlyRateMax,
+          budgetMin,
+          budgetMax,
+          rawCompensation: salaryText,
+          compensationParseConfidence,
+          needsManualCompensationReview,
           proposalsCount: undefined,
           postedAt,
           expiresAt: inferExpiresAt("simplyhired", postedAt),
-          budgetCurrency: salary.currency || "USD",
+          budgetCurrency: parsedSal.currency || "USD",
           contentHash: generateSimpleHash(title + jobKey + job.company),
         });
       }

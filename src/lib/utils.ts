@@ -40,7 +40,7 @@ export function timeAgo(date: string | Date): string {
   return `há ${Math.floor(days / 365)} anos`;
 }
 
-export function statusLabel(status: string): string {
+export function getApplicationStatusLabel(status: string): string {
   const map: Record<string, string> = {
     new: "Nova",
     saved: "Salva",
@@ -48,6 +48,7 @@ export function statusLabel(status: string): string {
     preparing: "Preparando",
     applied: "Aplicada",
     reviewing: "Em análise",
+    testing: "Teste Técnico",
     interview: "Entrevista",
     offer: "Oferta",
     rejected: "Recusada",
@@ -55,6 +56,28 @@ export function statusLabel(status: string): string {
     archived: "Arquivada",
   };
   return map[status] || status;
+}
+
+export function getApplicationStatusColor(status: string): string {
+  const map: Record<string, string> = {
+    new: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    saved: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    high_priority: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    preparing: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    applied: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+    reviewing: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    testing: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    interview: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+    offer: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    rejected: "bg-red-500/10 text-red-400 border-red-500/20",
+    ignored: "bg-zinc-500/10 text-zinc-500 border-zinc-500/15",
+    archived: "bg-zinc-500/10 text-zinc-500 border-zinc-500/15",
+  };
+  return map[status] || "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
+}
+
+export function statusLabel(status: string): string {
+  return getApplicationStatusLabel(status);
 }
 
 export function locationTypeLabel(t: string): string {

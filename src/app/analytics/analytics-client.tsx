@@ -9,6 +9,7 @@ import {
   BarChart3, Briefcase, TrendingUp, Send, Star, Target, Layers,
   Radar, Compass, Sparkles, Loader2, User, Globe, Bot,
   AlertTriangle, AlertCircle, CheckCircle, Clock, CheckCircle2,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -29,16 +30,7 @@ const PURPLE = "#8b5cf6";
 const COLORS = [TEAL, BLUE, EMERALD, AMBER, PURPLE, ROSE, "#6366f1", "#14b8a6", "#f97316", "#a855f7"];
 const COLORS_PIE = ["#0d9488", "#3b82f6", "#f59e0b", "#f43f5e", "#8b5cf6", "#10b981"];
 
-const FIT_LABELS_PT: Record<string, string> = {
-  high: "Excelente fit",
-  good: "Bom fit",
-  partial: "Revisar",
-  low: "Baixo fit",
-};
-
 export function AnalyticsClient() {
-  const [chartView, setChartView] = useState<"mercado" | "perfil">("perfil");
-
   const { data: jobs, isLoading, isError } = useQuery({
     queryKey: ["analytics-jobs"],
     queryFn: async () => {
@@ -59,6 +51,22 @@ export function AnalyticsClient() {
     staleTime: 30000,
   });
 
+  const { data: freelanceResponse } = useQuery({
+    queryKey: ["analytics-freelance-projects"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/freelance/projects?limit=500");
+        if (!res.ok) return { projects: [], total: 0 };
+        return res.json() as Promise<{ projects: { collectedAt?: string; fitScore?: number; status?: string }[]; total: number }>;
+      } catch (err) {
+        return { projects: [], total: 0 };
+      }
+    },
+    staleTime: 30000,
+  });
+
+  const freelanceProjects = useMemo(() => freelanceResponse?.projects || [], [freelanceResponse]);
+
   const { data: connectorsData } = useQuery({
     queryKey: ["analytics-connectors"],
     queryFn: async () => {
@@ -72,6 +80,26 @@ export function AnalyticsClient() {
     staleTime: 30000,
   });
 
+  const [nowTime] = useState(() => Date.now());
+
+  const fortyEightHoursAgo = useMemo(() => nowTime - 48 * 60 * 60 * 1000, [nowTime]);
+
+  const novas48h = useMemo(() => {
+    const safeJobs = jobs ?? [];
+    return safeJobs.filter((j) => {
+      const fetched = j.fetchedAt ? new Date(j.fetchedAt).getTime() : 0;
+      return fetched > fortyEightHoursAgo;
+    }).length;
+  }, [jobs, fortyEightHoursAgo]);
+
+  const estaSemana = useMemo(() => {
+    const safeJobs = jobs ?? [];
+    return safeJobs.filter((j) => {
+      const d = j.fetchedAt ? new Date(j.fetchedAt).getTime() : 0;
+      return nowTime - d < 7 * 86400000;
+    }).length;
+  }, [jobs, nowTime]);
+
   const profileSkillsLower = useMemo(
     () => (profile?.skills || []).map((s) => s.toLowerCase()),
     [profile]
@@ -83,21 +111,6 @@ export function AnalyticsClient() {
     jobs.forEach((j) => (j.technologies || []).forEach((t: string) => map.set(t, (map.get(t) || 0) + 1)));
     return map;
   }, [jobs]);
-
-  const topTechs = useMemo(() => {
-    const allEntries = [...techCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-    if (chartView === "mercado" || !profileSkillsLower.length) return allEntries;
-    const profileFiltered = allEntries.filter(([tech]) => profileSkillsLower.includes(tech.toLowerCase()));
-    return profileFiltered.length > 0 ? profileFiltered : allEntries;
-  }, [techCount, profileSkillsLower, chartView]);
-
-  const allProfileTechs = useMemo(() => {
-    if (chartView !== "mercado" || !profileSkillsLower.length) return [];
-    return [...techCount.entries()]
-      .filter(([tech]) => profileSkillsLower.includes(tech.toLowerCase()))
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-  }, [techCount, profileSkillsLower, chartView]);
 
   const skillVsDemand = useMemo(() => {
     if (!techCount || techCount.size === 0) return [];
@@ -192,6 +205,126 @@ export function AnalyticsClient() {
       .map((log) => ({ name: log.connectorName, error: log.errorMessage, runAt: log.runAt }));
   }, [connectorsData]);
 
+  // North Star: Strategic applications per week (fit >= 75%, applied, recent, checklist complete >= 4/8 checked items)
+  const strategicApplicationsWeek = useMemo(() => {
+    const safeJobs = jobs ?? [];
+    const sevenDaysAgo = nowTime - 7 * 24 * 60 * 60 * 1000;
+    return safeJobs.filter((j) => {
+      const isApplied = ["applied", "reviewing", "testing", "interview", "offer", "rejected"].includes(j.status);
+      if (!isApplied) return false;
+      
+      const appliedTime = j.appliedAt ? new Date(j.appliedAt).getTime() : 0;
+      if (appliedTime < sevenDaysAgo) return false;
+
+      let fitScoreVal = 0;
+      try {
+        const details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails;
+        fitScoreVal = details?.fitScore ?? (j.score ?? 0);
+      } catch {
+        fitScoreVal = j.score ?? 0;
+      }
+      if (fitScoreVal < 0.75) return false;
+
+      let checklistCount = 0;
+      try {
+        const checklist = j.checklistJson ? JSON.parse(j.checklistJson) : [];
+        checklistCount = Array.isArray(checklist) ? checklist.filter((item: { checked?: boolean }) => !!item.checked).length : 0;
+      } catch {
+        checklistCount = 0;
+      }
+      return checklistCount >= 4;
+    }).length;
+  }, [jobs, nowTime]);
+
+  // Secondary metric for freela: qualified freelas per week (fit >= 70%, recent, action taken)
+  const qualifiedFreelasWeek = useMemo(() => {
+    const sevenDaysAgo = nowTime - 7 * 24 * 60 * 60 * 1000;
+    return freelanceProjects.filter((p) => {
+      const collectedTime = p.collectedAt ? new Date(p.collectedAt).getTime() : 0;
+      if (collectedTime < sevenDaysAgo) return false;
+
+      const fitVal = p.fitScore ?? 0;
+      if (fitVal < 0.70) return false;
+
+      const hasAction = !["new", "ignored"].includes(p.status || "");
+      return hasAction;
+    }).length;
+  }, [freelanceProjects, nowTime]);
+
+  // Average fit of applied jobs
+  const appliedJobs = useMemo(() => {
+    const safeJobs = jobs ?? [];
+    return safeJobs.filter((j) => ["applied", "reviewing", "testing", "interview", "offer"].includes(j.status));
+  }, [jobs]);
+
+  const avgFitApplied = useMemo(() => {
+    if (!appliedJobs || appliedJobs.length === 0) return 0;
+    let sum = 0;
+    appliedJobs.forEach((j) => {
+      let fitScoreVal = j.score ?? 0;
+      try {
+        const details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails;
+        fitScoreVal = details?.fitScore ?? (j.score ?? 0);
+      } catch {
+        // fallback
+      }
+      sum += fitScoreVal;
+    });
+    return Math.round((sum / appliedJobs.length) * 100);
+  }, [appliedJobs]);
+
+  // Checklist compliance rate (applied/reviewing/testing/interview/offer with >= 4 items checked)
+  const checklistComplianceRate = useMemo(() => {
+    const safeJobs = jobs ?? [];
+    const pipelineAppliedOrPreparing = safeJobs.filter((j) => 
+      ["preparing", "applied", "reviewing", "testing", "interview", "offer", "rejected"].includes(j.status)
+    );
+    if (pipelineAppliedOrPreparing.length === 0) return 0;
+    
+    let completeCount = 0;
+    pipelineAppliedOrPreparing.forEach((j) => {
+      let checklistCount = 0;
+      try {
+        const checklist = j.checklistJson ? JSON.parse(j.checklistJson) : [];
+        checklistCount = Array.isArray(checklist) ? checklist.filter((item: { checked?: boolean }) => !!item.checked).length : 0;
+      } catch {
+        // fallback
+      }
+      if (checklistCount >= 4) completeCount++;
+    });
+    return Math.round((completeCount / pipelineAppliedOrPreparing.length) * 100);
+  }, [jobs]);
+
+  // Recurrent Skills Gaps in Felipe's Pipeline
+  const recurrentGaps = useMemo(() => {
+    const safeJobs = jobs ?? [];
+    const map = new Map<string, number>();
+    const pipeline = safeJobs.filter((j) => 
+      ["saved", "high_priority", "preparing", "applied", "reviewing", "testing", "interview", "offer", "rejected"].includes(j.status)
+    );
+    
+    pipeline.forEach((j) => {
+      let missingGaps: string[] = [];
+      try {
+        const details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails;
+        missingGaps = details?.missingGaps || [];
+      } catch {
+        const jTechs = j.technologies || [];
+        missingGaps = jTechs.filter((t) => !profileSkillsLower.includes(t.toLowerCase()));
+      }
+      
+      missingGaps.forEach((g) => {
+        const capitalizedGap = g.charAt(0).toUpperCase() + g.slice(1).toLowerCase();
+        map.set(capitalizedGap, (map.get(capitalizedGap) || 0) + 1);
+      });
+    });
+    
+    return [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, count]) => ({ name, count }));
+  }, [jobs, profileSkillsLower]);
+
   if (isLoading) {
     return (
       <div className="px-6 pt-4 pb-16 max-w-6xl mx-auto">
@@ -217,26 +350,14 @@ export function AnalyticsClient() {
   }
 
   const total = jobs.length;
-  const byLocation = group(jobs, "locationType");
-  const byLevel = group(jobs, "experienceLevel");
-  const byStatus = group(jobs, "status");
-  const byFit = group(jobs, "fitLabel");
-
-  const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
-  const novas48h = jobs.filter((j) => {
-    const fetched = j.fetchedAt ? new Date(j.fetchedAt).getTime() : 0;
-    return fetched > fortyEightHoursAgo;
-  }).length;
 
   const pipelineJobs = jobs.filter((j) => ["saved", "high_priority", "preparing", "applied", "reviewing", "interview", "offer", "rejected"].includes(j.status));
   const discoveryToPipelineRate = total > 0 ? Math.round((pipelineJobs.length / total) * 100) : 0;
-
   const applied = jobs.filter((j) => ["applied", "reviewing", "interview", "offer"].includes(j.status)).length;
   const pipelineToAppliedRate = pipelineJobs.length > 0 ? Math.round((applied / pipelineJobs.length) * 100) : 0;
 
   const interviews = jobs.filter((j) => ["interview", "offer"].includes(j.status)).length;
   const offers = jobs.filter((j) => j.status === "offer").length;
-  const highFit = jobs.filter((j) => j.fitLabel === "high" || (j.score ?? 0) >= 0.85).length;
   const responseRate = applied > 0 ? Math.round((interviews / applied) * 100) : 0;
 
   const suppressedCount = jobs.filter((j) => {
@@ -247,9 +368,6 @@ export function AnalyticsClient() {
       return (j.score ?? 0) <= 0.30;
     }
   }).length;
-
-  const locationData = Object.entries(byLocation).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: locationTypeLabel(k) || k, value: v }));
-  const levelData = Object.entries(byLevel).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: experienceLevelLabel(k) || k, value: v }));
 
   const pipelineFunnel = [
     { name: "Descobertas", value: total },
@@ -262,9 +380,9 @@ export function AnalyticsClient() {
 
   const timelineData = (() => {
     const dayMap = new Map<string, number>();
-    const now = new Date();
+    const nowRef = new Date(nowTime);
     for (let i = 29; i >= 0; i--) {
-      const d = new Date(now);
+      const d = new Date(nowRef);
       d.setDate(d.getDate() - i);
       dayMap.set(d.toISOString().split("T")[0], 0);
     }
@@ -278,14 +396,6 @@ export function AnalyticsClient() {
     }));
   })();
 
-  const now = new Date();
-  const estaSemana = jobs.filter((j) => {
-    const d = new Date(j.fetchedAt);
-    return now.getTime() - d.getTime() < 7 * 86400000;
-  }).length;
-
-  const avgScore = jobs.reduce((acc, j) => acc + (j.score || 0), 0) / Math.max(total, 1);
-
   return (
     <div className="px-6 pt-4 pb-16 max-w-7xl mx-auto">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -295,6 +405,14 @@ export function AnalyticsClient() {
             Métricas de funil acionáveis e análise de conversão por fonte
             <span className="ml-2 text-text-tertiary">· {estaSemana} novas esta semana</span>
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <a href="/api/case-export" download="prism-case-study.md">
+            <Button variant="secondary" className="gap-2 text-xs h-9">
+              <Download className="h-4 w-4 text-accent" />
+              Exportar Case (Portfólio)
+            </Button>
+          </a>
         </div>
       </div>
 
@@ -324,13 +442,46 @@ export function AnalyticsClient() {
         </div>
       )}
 
+      {/* North Star & Performance Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 text-left">
+        <Card className="border-accent/30 bg-accent/5 overflow-hidden">
+          <CardContent className="pt-5 pb-5 flex items-start gap-4">
+            <div className="p-3 bg-accent/10 rounded-xl text-accent shrink-0">
+              <Target className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-accent uppercase font-bold tracking-wider">Métrica Estrela (North Star)</span>
+              <h3 className="text-lg font-bold text-text-primary">Candidaturas Estratégicas esta Semana: <span className="text-accent text-xl">{strategicApplicationsWeek}</span></h3>
+              <p className="text-[11px] text-text-secondary leading-normal">
+                Candidaturas enviadas nos últimos 7 dias com fit técnico &ge; 75% e checklist de qualidade cumprido (&ge; 4 itens). Meta de qualidade real!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
+          <CardContent className="pt-5 pb-5 flex items-start gap-4">
+            <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 shrink-0">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">Métrica Secundária (Freelas)</span>
+              <h3 className="text-lg font-bold text-text-primary">Freelas Qualificados esta Semana: <span className="text-emerald-400 text-xl">{qualifiedFreelasWeek}</span></h3>
+              <p className="text-[11px] text-text-secondary leading-normal">
+                Projetos freelancers identificados nos últimos 7 dias com fit &ge; 70% e ação de proposta tomada. Caminho rápido para receita.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
         {[
           { label: "Total Coletado", value: total, icon: Briefcase, color: "text-text-primary" },
           { label: "Novas (48h)", value: novas48h, icon: Clock, color: "text-accent" },
-          { label: "Excelente Fit (>=85%)", value: highFit, icon: Sparkles, color: "text-emerald-500" },
-          { label: "Aplicadas", value: applied, icon: Send, color: "text-teal-500" },
+          { label: "Fit Médio (Aplicadas)", value: `${avgFitApplied}%`, icon: Sparkles, color: "text-emerald-500" },
+          { label: "Compliance Checklist", value: `${checklistComplianceRate}%`, icon: CheckCircle2, color: "text-teal-500" },
         ].map((c) => (
           <Card key={c.label}>
             <CardContent className="pt-4 pb-4">
@@ -345,11 +496,11 @@ export function AnalyticsClient() {
       </div>
 
       {/* Actionable Funnel Conversions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
         {[
           { label: "Conversão: Coleta → Pipeline", value: `${discoveryToPipelineRate}%`, desc: "Percentual de vagas descobertas que foram salvas ou priorizadas", icon: Layers, color: "text-blue-500" },
           { label: "Aproveitamento: Pipeline → Aplicada", value: `${pipelineToAppliedRate}%`, desc: "Percentual de vagas em pipeline que geraram candidaturas", icon: Target, color: "text-teal-500" },
-          { label: "Taxa de Resposta (Entrevistas)", value: `${responseRate}%`, desc: "Percentual de candidaturas que avançaram para entrevistas", icon: TrendingUp, color: "text-emerald-500" },
+          { label: "Taxa de Resposta (Entrevistas)", value: `${responseRate}%`, desc: "Percentual de candidaturas que avançaram para entrevistas nos últimos 30 dias", icon: TrendingUp, color: "text-emerald-500" },
         ].map((c) => (
           <Card key={c.label} className="border-border/60 hover:shadow-sm transition-shadow">
             <CardContent className="pt-5 pb-5">
@@ -459,7 +610,7 @@ export function AnalyticsClient() {
       </Card>
 
       {/* Line charts and skills comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
         {/* Collection Timeline */}
         <Card>
           <CardHeader><h2 className="text-sm font-semibold text-text-primary">Volume de Coleta Diária (Últimos 30 Dias)</h2></CardHeader>
@@ -501,6 +652,34 @@ export function AnalyticsClient() {
             )}
           </CardContent>
         </Card>
+
+        {/* Recurrent Skills Gaps */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-rose-500" />
+                Gaps de Habilidades Recorrentes
+              </h2>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recurrentGaps.length === 0 ? (
+              <div className="flex items-center justify-center h-[200px] text-xs text-text-tertiary">
+                Sem gaps recorrentes no pipeline
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={recurrentGaps} margin={{ left: -10 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#6e6e73" }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid rgba(0,0,0,0.1)", fontSize: 12 }} />
+                  <Bar dataKey="count" fill={ROSE} radius={[2, 2, 0, 0]} name="Ocorrências" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -532,13 +711,4 @@ function EmptyState() {
       </div>
     </div>
   );
-}
-
-function group(items: JobWithStatus[], key: keyof JobWithStatus): Record<string, number> {
-  const result: Record<string, number> = {};
-  items.forEach((item) => {
-    const k = String(item[key] ?? "unknown");
-    result[k] = (result[k] || 0) + 1;
-  });
-  return result;
 }

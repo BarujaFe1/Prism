@@ -16,14 +16,14 @@ import type { JobWithStatus } from "@/types";
 
 const pipelineStages: { status: string; label: string; icon: any; color: string }[] = [
   { status: "saved", label: "Salvas", icon: Bookmark, color: "text-blue-500" },
-  { status: "high_priority", label: "Prioritárias", icon: Sparkles, color: "text-amber-500" },
   { status: "preparing", label: "Preparando", icon: ArrowUpCircle, color: "text-purple-500" },
   { status: "applied", label: "Aplicadas", icon: Send, color: "text-teal-500" },
   { status: "reviewing", label: "Em análise", icon: Search, color: "text-indigo-500" },
-  { status: "interview", label: "Entrevista", icon: MessageCircle, color: "text-emerald-500" },
-  { status: "offer", label: "Oferta", icon: Briefcase, color: "text-emerald-600" },
+  { status: "testing", label: "Teste técnico", icon: AlertTriangle, color: "text-amber-500" },
+  { status: "interview", label: "Entrevistas", icon: MessageCircle, color: "text-emerald-500" },
+  { status: "offer", label: "Ofertas", icon: Briefcase, color: "text-emerald-600" },
   { status: "rejected", label: "Recusadas", icon: XCircle, color: "text-rose-500" },
-  { status: "archived", label: "Arquivadas", icon: Archive, color: "text-text-tertiary" },
+  { status: "ignored", label: "Ignoradas", icon: Ban, color: "text-text-tertiary" },
 ];
 
 function daysSince(dateStr: string): number {
@@ -43,8 +43,8 @@ function isOverdue(dateStr: string, thresholdDays: number): boolean {
 export function PipelineClient() {
   const queryClient = useQueryClient();
 
-  const curatedStatuses = pipelineStages.map((s) => s.status).join(",");
-  const allStatuses = ["saved", "high_priority", "preparing", "applied", "reviewing", "interview", "offer", "rejected", "archived"];
+  const curatedStatuses = "saved,high_priority,preparing,applied,reviewing,testing,interview,offer,rejected,ignored";
+  const allStatuses = ["saved", "high_priority", "preparing", "applied", "reviewing", "testing", "interview", "offer", "rejected", "ignored"];
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ["pipeline-jobs", curatedStatuses],
@@ -74,9 +74,13 @@ export function PipelineClient() {
     const map = new Map<string, JobWithStatus[]>();
     pipelineStages.forEach((s) => map.set(s.status, []));
     jobs?.forEach((j) => {
-      const arr = map.get(j.status) || [];
+      let statusKey = j.status;
+      if (statusKey === "high_priority") {
+        statusKey = "saved";
+      }
+      const arr = map.get(statusKey) || [];
       arr.push(j);
-      map.set(j.status, arr);
+      map.set(statusKey, arr);
     });
     return map;
   }, [jobs]);
@@ -168,7 +172,12 @@ export function PipelineClient() {
                             <Card className={`cursor-pointer hover:border-accent/30 transition-all duration-200 ${stale ? "opacity-60" : ""}`}>
                               <CardContent className="pb-3 pt-3">
                                 <div className="flex items-start justify-between gap-2">
-                                  <p className="text-sm font-medium text-text-primary leading-snug line-clamp-2 flex-1">{job.title}</p>
+                                  <div className="flex items-start gap-1 flex-1">
+                                    {job.status === "high_priority" && (
+                                      <Sparkles className="h-3.5 w-3.5 text-amber-500 fill-amber-500/20 shrink-0 mt-0.5" />
+                                    )}
+                                    <p className="text-sm font-medium text-text-primary leading-snug line-clamp-2">{job.title}</p>
+                                  </div>
                                   {stale && <Clock className="h-3 w-3 text-text-tertiary shrink-0 mt-0.5" />}
                                 </div>
                                 <p className="text-xs text-text-secondary mt-0.5">{job.company}</p>
@@ -209,44 +218,33 @@ export function PipelineClient() {
                                     {job.nextActionDate && ` até ${new Date(job.nextActionDate).toLocaleDateString("pt-BR")}`}
                                   </p>
                                 )}
+
+                                {/* Transition status dropdown */}
+                                <div className="mt-2.5 pt-2.5 border-t border-border/40 flex items-center justify-between gap-1.5" onClick={(e) => e.preventDefault()}>
+                                  <span className="text-[9px] uppercase tracking-wider text-text-tertiary font-semibold">Mover para:</span>
+                                  <select
+                                    value={job.status}
+                                    onChange={(e) => {
+                                      e.preventDefault();
+                                      updateMutation.mutate({ id: job.id, status: e.target.value });
+                                    }}
+                                    className="text-[10px] bg-bg-elevated border border-border/80 rounded px-1.5 py-0.5 text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+                                  >
+                                    <option value="saved">Salvas (Padrão)</option>
+                                    <option value="high_priority">Salvas (Prioritária)</option>
+                                    <option value="preparing">Preparando</option>
+                                    <option value="applied">Aplicadas</option>
+                                    <option value="reviewing">Em análise</option>
+                                    <option value="testing">Teste técnico</option>
+                                    <option value="interview">Entrevistas</option>
+                                    <option value="offer">Ofertas</option>
+                                    <option value="rejected">Recusadas</option>
+                                    <option value="ignored">Ignoradas</option>
+                                  </select>
+                                </div>
                               </CardContent>
                             </Card>
                           </Link>
-
-                          {/* Stage transition buttons */}
-                          <div className="absolute -right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-0.5">
-                            {/* Find next possible status */}
-                            {stage.status === "saved" && (
-                              <button onClick={(e) => { e.preventDefault(); updateMutation.mutate({ id: job.id, status: "high_priority" }); }}
-                                className="h-5 w-5 rounded-full bg-amber-500/20 hover:bg-amber-500/40 flex items-center justify-center" title="Priorizar">
-                                <ArrowUpCircle className="h-3 w-3 text-amber-500" />
-                              </button>
-                            )}
-                            {stage.status === "high_priority" && (
-                              <button onClick={(e) => { e.preventDefault(); updateMutation.mutate({ id: job.id, status: "preparing" }); }}
-                                className="h-5 w-5 rounded-full bg-purple-500/20 hover:bg-purple-500/40 flex items-center justify-center" title="Preparar">
-                                <ArrowUpCircle className="h-3 w-3 text-purple-500" />
-                              </button>
-                            )}
-                            {stage.status === "preparing" && (
-                              <button onClick={(e) => { e.preventDefault(); updateMutation.mutate({ id: job.id, status: "applied" }); }}
-                                className="h-5 w-5 rounded-full bg-teal-500/20 hover:bg-teal-500/40 flex items-center justify-center" title="Aplicar">
-                                <Send className="h-3 w-3 text-teal-500" />
-                              </button>
-                            )}
-                            {(stage.status === "applied" || stage.status === "reviewing") && (
-                              <button onClick={(e) => { e.preventDefault(); updateMutation.mutate({ id: job.id, nextActionType: "follow_up", nextActionDate: new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0] }); }}
-                                className="h-5 w-5 rounded-full bg-amber-500/20 hover:bg-amber-500/40 flex items-center justify-center" title="Agendar follow-up">
-                                <Calendar className="h-3 w-3 text-amber-500" />
-                              </button>
-                            )}
-                            {stage.status !== "archived" && stage.status !== "rejected" && (
-                              <button onClick={(e) => { e.preventDefault(); updateMutation.mutate({ id: job.id, status: "archived" }); }}
-                                className="h-5 w-5 rounded-full bg-gray-500/20 hover:bg-gray-500/40 flex items-center justify-center" title="Arquivar">
-                                <Archive className="h-3 w-3 text-gray-500" />
-                              </button>
-                            )}
-                          </div>
                         </div>
                       );
                     })}

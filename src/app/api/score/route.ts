@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { jobs, profile } from "@/db/schema";
+import { jobs, profile, monitoredCompanies } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { computeScore } from "@/engine/scorer";
 import type { LocationType, ContractType, ExperienceLevel } from "@/types";
@@ -25,12 +25,30 @@ export async function POST() {
     experienceLevel: (p.experienceLevel || "junior") as ExperienceLevel,
     languages: (p.languages || []) as string[],
     negativeKeywords: (p.negativeKeywords || []) as string[],
+    skillsEvidence: (p.skillsEvidence || []) as any[],
+    learningBacklog: (p.learningBacklog || []) as any[],
   };
+
+  // Cache monitored companies
+  const companies = await db
+    .select({ normalizedName: monitoredCompanies.normalizedName, priority: monitoredCompanies.priority })
+    .from(monitoredCompanies)
+    .all();
+  const companyPriorityMap = new Map(companies.map((c) => [c.normalizedName, c.priority]));
 
   const allJobs = await db.select().from(jobs).all();
   let updated = 0;
 
   for (const job of allJobs) {
+    const companyNameNormalized = job.company
+      ?.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "")
+      .trim();
+    const companyPriority = companyPriorityMap.get(companyNameNormalized || "") || null;
+    const isOfficialSource = ["greenhouse", "lever", "ashby", "gupy", "jobposting"].includes(job.source?.toLowerCase() || "");
+
     const { score, details } = computeScore(
       {
         title: job.title,
@@ -42,7 +60,12 @@ export async function POST() {
         salaryMin: job.salaryMin,
         salaryMax: job.salaryMax,
         currency: job.currency,
+        salaryPeriod: job.salaryPeriod,
         postedAt: job.postedAt,
+        location: job.location,
+        company: job.company,
+        companyPriority,
+        isOfficialSource,
       },
       profileData
     );

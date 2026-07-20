@@ -29,6 +29,9 @@ export interface FreelanceProjectData {
   budgetType?: string;
   hourlyRateMin?: number;
   hourlyRateMax?: number;
+  rawCompensation?: string;
+  compensationParseConfidence?: number;
+  needsManualCompensationReview?: boolean;
   skills?: string[];
   category?: string;
   subcategory?: string;

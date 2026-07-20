@@ -65,6 +65,8 @@ export async function saveJobs(jobsData: RawJobData[], connectorName: string): P
     experienceLevel: (p.experienceLevel || "junior") as any,
     languages: (p.languages || []) as string[],
     negativeKeywords: (p.negativeKeywords || []) as string[],
+    skillsEvidence: (p.skillsEvidence || []) as any[],
+    learningBacklog: (p.learningBacklog || []) as any[],
   } : null;
 
   const atsSources = ["greenhouse", "lever", "ashby", "gupy"];
@@ -194,6 +196,7 @@ export async function saveJobs(jobsData: RawJobData[], connectorName: string): P
       salaryMin: normalized.salaryMin || null,
       salaryMax: normalized.salaryMax || null,
       currency: normalized.currency || null,
+      salaryPeriod: normalized.salaryPeriod || null,
       postedAt: normalized.postedAt || raw.postedAt || null,
       location: normalized.location || null,
       company: normalized.company || null,

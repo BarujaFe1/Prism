@@ -90,6 +90,9 @@ export async function saveFreelanceProject(
     budgetType: project.budgetType ?? null,
     hourlyRateMin: project.hourlyRateMin ?? null,
     hourlyRateMax: project.hourlyRateMax ?? null,
+    rawCompensation: project.rawCompensation ?? null,
+    compensationParseConfidence: project.compensationParseConfidence ?? null,
+    needsManualCompensationReview: project.needsManualCompensationReview ?? null,
     skills: project.skills ? JSON.stringify(project.skills) : null,
     category: project.category ?? null,
     subcategory: project.subcategory ?? null,
@@ -221,4 +224,93 @@ export function extractDurationFromDescription(desc: string): string | undefined
     if (p.regex.test(desc)) return p.value;
   }
   return undefined;
+}
+
+export function parseCompensation(text: string): {
+  min?: number;
+  max?: number;
+  type: "hourly" | "annual" | "monthly" | "fixed_project" | "unknown";
+  currency: string;
+  confidence: number;
+} {
+  if (!text) return { type: "unknown", currency: "USD", confidence: 0 };
+  
+  const clean = text.trim();
+  let currency = "USD";
+  if (/R\$/i.test(clean) || /BRL/i.test(clean)) {
+    currency = "BRL";
+  } else if (/EUR/i.test(clean) || /€/i.test(clean)) {
+    currency = "EUR";
+  } else if (/GBP/i.test(clean) || /£/i.test(clean)) {
+    currency = "GBP";
+  }
+  
+  const matches = [...clean.matchAll(/(?:\$\s*|R\$\s*|€\s*|£\s*|\bBRL\b\s*|\bUSD\b\s*)?([\d,.]+)\s*(k)?/gi)];
+  const numbers: number[] = [];
+  for (const m of matches) {
+    let valStr = m[1].replace(/,/g, "");
+    if (currency === "BRL" && valStr.includes(".") && !valStr.includes(",")) {
+      const parts = valStr.split(".");
+      if (parts[1] && parts[1].length === 3) {
+        valStr = valStr.replace(/\./g, "");
+      }
+    }
+    let val = parseFloat(valStr);
+    if (m[2] && m[2].toLowerCase() === "k") {
+      val *= 1000;
+    }
+    if (!isNaN(val)) {
+      numbers.push(val);
+    }
+  }
+  
+  let type: "hourly" | "annual" | "monthly" | "fixed_project" | "unknown" = "unknown";
+  let confidence = 0.8;
+  
+  const isHourly = /hour|hourly|\/hr|\/hour|\/h\b|\bh\b/i.test(clean) && !/year|annually|month|monthly/i.test(clean);
+  const isAnnual = /year|annually|annual|per\s+annum|yr\b|\byr\b/i.test(clean);
+  const isMonthly = /month|monthly|mo\b/i.test(clean) || (currency === "BRL" && !isHourly && !isAnnual);
+  const isFixed = /fixed|flat\s*rate|project/i.test(clean);
+  
+  if (isHourly) {
+    type = "hourly";
+  } else if (isAnnual) {
+    type = "annual";
+  } else if (isMonthly) {
+    type = "monthly";
+  } else if (isFixed) {
+    type = "fixed_project";
+  } else {
+    const maxVal = numbers.length > 0 ? Math.max(...numbers) : 0;
+    if (maxVal > 5000) {
+      type = "annual";
+      confidence = 0.5;
+    } else if (maxVal > 1000) {
+      type = "monthly";
+      confidence = 0.5;
+    } else if (maxVal > 0) {
+      type = "hourly";
+      confidence = 0.4;
+    }
+  }
+  
+  if (type === "hourly" && numbers.length > 0 && Math.max(...numbers) >= 1000) {
+    type = "annual";
+    confidence = 0.9;
+  }
+  
+  if (numbers.length === 0) {
+    return { type: "unknown", currency, confidence: 0 };
+  }
+  
+  const min = Math.min(...numbers);
+  const max = numbers.length > 1 ? Math.max(...numbers) : min;
+  
+  return {
+    min,
+    max,
+    type,
+    currency,
+    confidence
+  };
 }

@@ -10,6 +10,7 @@ import { Shell } from "@/components/layout/Shell";
 import { ArrowLeft, ExternalLink, Users, Clock, TrendingUp, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { ViabilidadeFinanceira } from "@/components/freelance/ViabilidadeFinanceira";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 interface FreelanceProjectDetail {
   id: string;
@@ -124,9 +125,10 @@ export default function FreelanceDetailPage() {
                 <p className="text-sm text-text-secondary">{project.clientName}</p>
               )}
               {project.description && (
-                <div className="mt-4 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-                  {project.description}
-                </div>
+                <SafeHtml
+                  html={project.description}
+                  className="mt-4 text-sm text-text-secondary leading-relaxed max-h-96 overflow-y-auto"
+                />
               )}
             </CardContent>
           </Card>

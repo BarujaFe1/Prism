@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Shell } from "@/components/layout/Shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -130,7 +130,34 @@ export default function FreelanceRadarPage() {
     setSyncing(false);
   };
 
-  const projects = data?.projects || [];
+  const projects = useMemo(() => {
+    const rawProjects: FreelanceProject[] = data?.projects || [];
+    
+    // Incompatible keywords for freelance work
+    const excludePattern = /\b(graphic designer|design|designer|wordpress|elementor|hr|recursos humanos|rh|sales|vendas|marketing|customer success|customer service|suporte|support|assistant|assistente|crm|blockchain|crypto|flutter|mobile|ios|android|swift|kotlin|accounting|contabilidade|writing|writer|copywriter|salesforce|hubspot|seo|content|social media|amazon ppc|ppc|amazon ads|editorial|content manager|shopify|no-code|nocode|customer support|support manager)\b/i;
+    
+    // Allowed keywords that represent Felipe's stack and capabilities
+    const allowPattern = /\b(python|pandas|numpy|sql|postgres|sqlite|database|api|apis|scraping|scrape|crawler|selenium|automation|automação|sheet|sheets|excel|etl|data pipeline|dashboard|bi|analytics|looker|powerbi|tableau|metabase|nextjs|react|typescript|node|fastapi|django|flask|machine learning|ml|ai|llm|prompt|data quality|profiling|statistics|ab testing|testes ab|relatorio|report)\b/i;
+
+    return rawProjects.filter((p) => {
+      const title = p.title.toLowerCase();
+      const skills = (p.skills || "").toLowerCase();
+      
+      // Exclusion logic
+      if (excludePattern.test(title) || excludePattern.test(skills)) {
+        return false;
+      }
+      
+      // Allow list match
+      const textToMatch = `${title} ${skills}`;
+      if (!allowPattern.test(textToMatch)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [data]);
+
   const stats = data?.stats || { totalProjects: 0, byPlatform: {}, opportunityWindows: 0 };
   const opportunities = projects.filter((p: FreelanceProject) => (p.proposalsCount ?? 999) <= 5 && (p.fitScore ?? 0) >= 75);
   const highFit = projects.filter((p: FreelanceProject) => (p.fitScore ?? 0) >= 75);

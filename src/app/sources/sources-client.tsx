@@ -530,6 +530,121 @@ export function SourcesClient() {
     }
   };
 
+  const sourceQualityRecommendations = useMemo(() => {
+    if (!companies) return [];
+    
+    const recs: { 
+      id: string; 
+      companyId: string;
+      companyName: string;
+      type: "pause_low_fit" | "demote_errors" | "promote_high_fit" | "review_paused"; 
+      title: string; 
+      desc: string; 
+      actionLabel: string;
+      actionType: "pause" | "demote" | "promote" | "activate";
+      targetValue?: string;
+    }[] = [];
+    
+    companies.forEach((c) => {
+      if (c.isActive && c.totalJobsFound >= 10 && c.usefulnessRate === 0) {
+        recs.push({
+          id: `low-fit-${c.id}`,
+          companyId: c.id,
+          companyName: c.name,
+          type: "pause_low_fit",
+          title: `Pausar ${c.name} (0% Fit)`,
+          desc: `Esta empresa gerou ${c.totalJobsFound} vagas, mas nenhuma se alinhou ao seu perfil de dados. Sugerimos pausar para reduzir ruído.`,
+          actionLabel: "Pausar Rastreamento",
+          actionType: "pause",
+        });
+      }
+      
+      if (c.isActive && c.lastError && (c.priority === "P0" || c.priority === "P1")) {
+        recs.push({
+          id: `demote-error-${c.id}`,
+          companyId: c.id,
+          companyName: c.name,
+          type: "demote_errors",
+          title: `Rebaixar Prioridade de ${c.name}`,
+          desc: `Esta empresa está ativa em prioridade ${c.priority} mas está falhando constantemente com erro. Sugerimos rebaixar para P2.`,
+          actionLabel: "Rebaixar para P2",
+          actionType: "demote",
+          targetValue: "P2",
+        });
+      }
+      
+      if (c.isActive && c.totalJobsFound >= 3 && c.usefulnessRate >= 0.4 && c.priority === "P2") {
+        recs.push({
+          id: `promote-fit-${c.id}`,
+          companyId: c.id,
+          companyName: c.name,
+          type: "promote_high_fit",
+          title: `Promover ${c.name} para P0`,
+          desc: `Esta empresa gerou ${c.totalJobsFound} vagas e tem uma alta taxa de fit de ${Math.round(c.usefulnessRate * 100)}%. Sugerimos promover para P0.`,
+          actionLabel: "Promover para P0",
+          actionType: "promote",
+          targetValue: "P0",
+        });
+      }
+    });
+    
+    return recs;
+  }, [companies]);
+
+  const handleExecuteRecommendation = async (rec: any) => {
+    try {
+      const updates: Record<string, any> = { id: rec.companyId };
+      if (rec.actionType === "pause") {
+        updates.isActive = false;
+      } else if (rec.actionType === "demote" || rec.actionType === "promote") {
+        updates.priority = rec.targetValue;
+      } else if (rec.actionType === "activate") {
+        updates.isActive = true;
+      }
+      
+      const res = await fetch("/api/companies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(`Ação "${rec.title}" executada com sucesso!`, "success");
+        queryClient.invalidateQueries({ queryKey: ["target-companies"] });
+      } else {
+        toast("Erro ao executar ação", "error");
+      }
+    } catch {
+      toast("Erro de conexão", "error");
+    }
+  };
+
+  const handleCleanupBadSources = async () => {
+    const targets = sourceQualityRecommendations.filter(r => r.type === "pause_low_fit");
+    if (targets.length === 0) {
+      toast("Nenhuma fonte ineficaz identificada para limpeza!", "info");
+      return;
+    }
+    
+    toast(`Iniciando limpeza de ${targets.length} fontes ineficazes...`, "info");
+    
+    let successCount = 0;
+    for (const rec of targets) {
+      try {
+        const res = await fetch("/api/companies", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: rec.companyId, isActive: false }),
+        });
+        const data = await res.json();
+        if (data.ok) successCount++;
+      } catch {}
+    }
+    
+    toast(`${successCount} fontes ineficazes foram pausadas com sucesso!`, "success");
+    queryClient.invalidateQueries({ queryKey: ["target-companies"] });
+  };
+
   const healthIcon: Record<string, any> = { healthy: CheckCircle2, warning: AlertTriangle, inactive: XCircle, error: XCircle };
   const healthColor: Record<string, string> = { healthy: "text-success", warning: "text-warning", inactive: "text-text-tertiary", error: "text-danger" };
 
@@ -745,6 +860,61 @@ export function SourcesClient() {
               </Card>
             </div>
           </div>
+
+          {/* RECOMENDAÇÕES DE QUALIDADE */}
+          <Card className="mb-6 border-border/80 bg-bg-elevated/5">
+            <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
+                  <Settings2 className="h-4 w-4 text-accent" />
+                  Qualidade das Fontes & Otimizações
+                </h3>
+                <p className="text-[11px] text-text-tertiary">Análise automática de relevância e erros de rastreamento</p>
+              </div>
+              {sourceQualityRecommendations.some(r => r.type === "pause_low_fit") && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={handleCleanupBadSources}
+                  className="text-xs bg-danger/10 hover:bg-danger/20 text-danger border-danger/20"
+                >
+                  <FilterX className="h-3 w-3 mr-1" />
+                  Limpar Fontes Ineficazes
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="pt-4">
+              {sourceQualityRecommendations.length === 0 ? (
+                <p className="text-xs text-text-tertiary italic text-center py-2">
+                  ✨ Watchlist saudável! Todas as fontes ativas estão trazendo vagas de alto aproveitamento técnico e com conexões estáveis.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {sourceQualityRecommendations.map((rec) => (
+                    <div key={rec.id} className="flex items-start justify-between gap-4 p-3 rounded-lg border border-border/60 bg-bg/50 text-xs">
+                      <div className="space-y-1">
+                        <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                          {rec.actionType === "pause" && <span className="text-danger">●</span>}
+                          {rec.actionType === "demote" && <span className="text-warning">●</span>}
+                          {rec.actionType === "promote" && <span className="text-success">●</span>}
+                          {rec.title}
+                        </span>
+                        <p className="text-text-secondary leading-relaxed text-[11px]">{rec.desc}</p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleExecuteRecommendation(rec)}
+                        className="shrink-0 h-8 text-[11px]"
+                      >
+                        {rec.actionLabel}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* ACTION BUTTONS & ACTIONS PANEL */}
           <div className="mb-6 bg-bg-elevated/30 border border-border p-4 rounded-xl space-y-3">

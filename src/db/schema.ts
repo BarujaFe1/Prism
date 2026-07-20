@@ -51,13 +51,19 @@ export const jobs = sqliteTable("jobs", {
   coverSuggestion: text("cover_suggestion"),
   rawData: text("raw_data", { mode: "json" }),
   status: text("status", {
-    enum: ["new", "saved", "high_priority", "preparing", "applied", "reviewing", "interview", "offer", "rejected", "ignored", "archived"],
+    enum: ["new", "saved", "high_priority", "preparing", "applied", "reviewing", "testing", "interview", "offer", "rejected", "ignored", "archived"],
   })
     .notNull()
     .default("new"),
   nextActionType: text("next_action_type"),
   nextActionDate: text("next_action_date"),
   lastContactedAt: text("last_contacted_at"),
+  appliedAt: text("applied_at"),
+  checklistJson: text("checklist_json"),
+  tailoredResume: text("tailored_resume"),
+  cvVersionUsed: text("cv_version_used"),
+  portfolioLinkUsed: text("portfolio_link_used"),
+  rejectionReason: text("rejection_reason"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
@@ -165,7 +171,9 @@ export const profile = sqliteTable("profile", {
   freelanceExperienceYears: integer("freelance_experience_years"),
   freelancePortfolioUrl: text("freelance_portfolio_url"),
   freelanceSpecialization: text("freelance_specialization"),
-
+  skillsEvidence: text("skills_evidence", { mode: "json" }).$type<any[]>(),
+  learningBacklog: text("learning_backlog", { mode: "json" }).$type<any[]>(),
+ 
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

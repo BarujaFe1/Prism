@@ -8,11 +8,30 @@ import { Loader2, Compass, RefreshCw, User, Bell, Calendar, AlertTriangle, Spark
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { JobWithStatus, SettingsData } from "@/types";
+import type { JobWithStatus, SettingsData, ProfileData } from "@/types";
 import { locationTypeLabel, experienceLevelLabel, timeAgo } from "@/lib/utils";
 
 const MODALIDADE_FILTERS = ["remote", "hybrid", "onsite"];
 const SENIORITY_FILTERS = ["internship", "trainee", "junior", "mid", "senior", "lead"];
+
+const PROJECT_SUGGESTIONS: Record<string, string> = {
+  sql: "DataFlow ou Maestro",
+  python: "DataFlow ou Disk Água",
+  "data quality": "DataFlow",
+  pandas: "Disk Água ou LançaEnsaio",
+  "google sheets": "Disk Água ou Form2Dashboard",
+  "next.js": "Prism ou Form2Dashboard",
+  nextjs: "Prism ou Form2Dashboard",
+  react: "Prism",
+  typescript: "Prism",
+  fastapi: "Maestro",
+  scraping: "Disk Água",
+  selenium: "Disk Água",
+  "a/b testing": "StatLab",
+  "teste a/b": "StatLab",
+  statistics: "StatLab",
+  estatistica: "StatLab"
+};
 
 const BR_CATEGORIES = [
   { id: "novas_p0", label: "Novas P0", icon: "🔥" },
@@ -47,6 +66,15 @@ export default function RadarPage() {
     staleTime: 10000,
   });
 
+  const { data: profile } = useQuery<ProfileData>({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/profile");
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
   const stats = useMemo(() => {
     if (!allJobs) return { total: 0, novas: 0, altoFit: 0, aplicadasEstaSemana: 0 };
     const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
@@ -62,10 +90,31 @@ export default function RadarPage() {
     };
   }, [allJobs]);
 
+  const topThreeJobs = useMemo(() => {
+    if (!allJobs) return [];
+    return allJobs
+      .filter((j) => {
+        if (j.status !== "new" && j.status !== "saved") return false;
+        let details: any = {};
+        try {
+          details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails || {};
+        } catch {}
+        const eligibility = details.eligibility || "";
+        if (["over_senior", "wrong_track", "requires_degree", "sales_business_role", "freelance_noise", "hard_no"].includes(eligibility)) return false;
+        if (details.decisionLabel === "SUPPRESSED") return false;
+        return (j.score ?? 0) >= 0.50;
+      })
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 3);
+  }, [allJobs]);
+
+  const topThreeIds = useMemo(() => new Set(topThreeJobs.map(j => j.id)), [topThreeJobs]);
+
   const filteredNewJobs = useMemo(() => {
     if (!allJobs) return [];
     return allJobs.filter((j) => {
       if (j.status !== "new") return false;
+      if (topThreeIds.has(j.id)) return false;
 
       let details: any = {};
       try {
@@ -83,7 +132,7 @@ export default function RadarPage() {
       if (seniorityFilters.length > 0 && (!j.experienceLevel || !seniorityFilters.includes(j.experienceLevel))) return false;
       return true;
     });
-  }, [allJobs, modalidadeFilters, seniorityFilters]);
+  }, [allJobs, modalidadeFilters, seniorityFilters, topThreeIds]);
 
   const highFitJobs = useMemo(() => {
     return filteredNewJobs.filter((j) => (j.score ?? 0) >= 0.85).slice(0, 10);
@@ -184,6 +233,7 @@ export default function RadarPage() {
     const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
 
     allJobs.forEach((j) => {
+      if (topThreeIds.has(j.id)) return; // Exclude Top 3 recommendations from categories
       let details: any = {};
       try {
         details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails || {};
@@ -265,7 +315,7 @@ export default function RadarPage() {
     });
 
     return categories;
-  }, [allJobs, companyMap]);
+  }, [allJobs, companyMap, topThreeIds]);
 
   return (
     <Shell>
@@ -309,74 +359,156 @@ export default function RadarPage() {
           ))}
         </div>
 
-        {/* Daily Briefing */}
-        {briefing?.hasPendingAction && (
-          <div className="mb-6 rounded-xl border border-accent/20 bg-accent/5 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="h-4 w-4 text-accent" />
-              <h2 className="text-sm font-semibold text-text-primary">Hoje no Radar</h2>
-              <span className="text-[10px] text-text-tertiary">· {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</span>
+        {/* Urgent follow-ups warning if any exist */}
+        {briefing?.followUpsOverdue && briefing.followUpsOverdue.length > 0 && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 animate-bounce" />
+              <div className="text-xs">
+                <span className="font-semibold">{briefing.followUpsOverdue.length} follow-ups pendentes há mais de 5 dias!</span>
+                <span className="ml-2 opacity-80">Não deixe contatos esfriarem. Entre em contato hoje.</span>
+              </div>
             </div>
+            <Link href="/pipeline">
+              <Button size="sm" variant="ghost" className="text-xs hover:bg-amber-500/20 text-amber-400">
+                Ver Pipeline <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Follow-ups overdue */}
-              {briefing.followUpsOverdue.length > 0 && (
-                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Bell className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                      {briefing.followUpsOverdue.length} follow-up{briefing.followUpsOverdue.length > 1 ? "s" : ""} pendente{briefing.followUpsOverdue.length > 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    {briefing.followUpsOverdue.slice(0, 3).map((j) => (
-                      <Link key={j.id} href={`/jobs/${j.id}`}
-                        className="block text-[11px] text-amber-700 dark:text-amber-400 hover:underline truncate">
-                        {j.title} · {j.company}
-                      </Link>
-                    ))}
-                  </div>
-                  <Link href="/pipeline" className="text-[10px] text-accent hover:underline mt-1.5 inline-flex items-center gap-0.5">
-                    Ver pipeline <ArrowRight className="h-2.5 w-2.5" />
-                  </Link>
-                </div>
-              )}
-
-              {/* High fit not actioned */}
-              {briefing.highFitNotActioned.length > 0 && (
-                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                      {briefing.highFitNotActioned.length} alto fit sem ação
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    {briefing.highFitNotActioned.map((j) => (
-                      <Link key={j.id} href={`/jobs/${j.id}`}
-                        className="block text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline truncate">
-                        {Math.round((j.score ?? 0) * 100)}% · {j.title} · {j.company}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Top recommendation */}
-              {briefing.topRec && (
-                <div className="rounded-lg bg-accent/10 border border-accent/20 p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Send className="h-3.5 w-3.5 text-accent" />
-                    <p className="text-xs font-semibold text-text-primary">Recomendação do dia</p>
-                  </div>
-                  <Link href={`/jobs/${briefing.topRec.id}`}
-                    className="block text-[11px] text-accent hover:underline">
-                    {Math.round((briefing.topRec.score ?? 0) * 100)}% · {briefing.topRec.title}
-                  </Link>
-                  <p className="text-[10px] text-text-tertiary mt-0.5">{briefing.topRec.company}</p>
-                </div>
-              )}
+        {/* Top 3 do dia */}
+        {topThreeJobs.length > 0 ? (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-accent animate-pulse" />
+              <h2 className="text-sm font-semibold text-text-primary">3 Ações Recomendadas para Hoje</h2>
+              <span className="text-xs text-text-tertiary">· Vagas de alto aproveitamento calibradas para você</span>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {topThreeJobs.map((j) => {
+                let details: any = {};
+                try {
+                  details = typeof j.scoreDetails === "string" ? JSON.parse(j.scoreDetails) : j.scoreDetails || {};
+                } catch {}
+                const warning = details.warnings?.[0] || details.penalties?.[0];
+                const decision = details.scoreLabel || "Revisar";
+                const isHigh = (j.score ?? 0) >= 0.75;
+                const scoreColor = isHigh ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5" : "text-amber-400 border-amber-500/20 bg-amber-500/5";
+
+                const matchedWithEvidence = details.matchedEvidences || [];
+                const missingGaps = details.missingGaps || [];
+                const profileSkills = profile?.skills || [];
+                const hasProjects = profile?.skillsEvidence && profile.skillsEvidence.length > 0;
+                
+                const matchedWithoutEvidence = (j.technologies || []).filter((t: string) => 
+                  profileSkills.some((ps: string) => ps.toLowerCase().trim() === t.toLowerCase().trim()) &&
+                  !matchedWithEvidence.some((me: string) => me.toLowerCase().trim() === t.toLowerCase().trim())
+                );
+
+                let evidenceText = "";
+                let evidenceLink = "/profile#evidence-matrix-card";
+                let gapText = "";
+                let gapLink = "/profile#learning-backlog-card";
+
+                if (!hasProjects) {
+                  evidenceText = "Cadastre DataFlow como evidência de Python/Data Quality para ativar este match.";
+                  evidenceLink = "/profile?preselect=Python#evidence-matrix-card";
+                } else if (matchedWithEvidence.length > 0) {
+                  const skill = matchedWithEvidence[0];
+                  const projects = profile?.skillsEvidence
+                    ? profile.skillsEvidence
+                        .filter((ev: any) => ev.associatedSkills?.map((s: string) => s.toLowerCase().trim()).includes(skill.toLowerCase()))
+                        .map((ev: any) => ev.projectName)
+                    : [];
+                    
+                  if (projects.length > 0) {
+                    evidenceText = `${skill} comprovado por ${projects.join(" e ")}`;
+                  } else {
+                    const suggestion = PROJECT_SUGGESTIONS[skill.toLowerCase()] || "projeto no perfil";
+                    evidenceText = `${skill} comprovado por ${suggestion}`;
+                  }
+                } else if (matchedWithoutEvidence.length > 0) {
+                  const skill = matchedWithoutEvidence[0];
+                  const suggestion = PROJECT_SUGGESTIONS[skill.toLowerCase()] || "projeto no perfil";
+                  evidenceText = `${skill} sem evidência — associe ${suggestion}`;
+                  evidenceLink = `/profile?preselect=${encodeURIComponent(skill)}#evidence-matrix-card`;
+                } else {
+                  evidenceText = "Adicionar evidências no perfil";
+                }
+
+                if (missingGaps.length > 0) {
+                  const skill = missingGaps[0];
+                  const isHard = ["rag", "airflow", "dbt", "kubernetes", "aws", "gcp"].includes(skill.toLowerCase());
+                  if (isHard) {
+                    gapText = `${skill} é gap duro — criar Learning Task`;
+                  } else {
+                    gapText = `${skill} aprendível`;
+                  }
+                  gapLink = `/profile?preselect=${encodeURIComponent(skill)}#learning-backlog-card`;
+                } else {
+                  gapText = "Sem gaps";
+                }
+
+                return (
+                  <div key={j.id} className="relative rounded-xl border border-border bg-bg-elevated/20 p-4 flex flex-col justify-between hover:border-accent/40 hover:bg-bg-elevated/40 transition-all group duration-200">
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold tracking-wide uppercase ${scoreColor}`}>
+                          {decision} ({Math.round((j.score ?? 0) * 100)}%)
+                        </span>
+                        <span className="text-[10px] text-text-tertiary font-medium">
+                          {experienceLevelLabel(j.experienceLevel || "junior")}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-semibold text-text-primary leading-snug line-clamp-2 mb-0.5 group-hover:text-accent transition-colors">
+                        {j.title}
+                      </h3>
+                      <p className="text-xs text-text-secondary font-medium mb-3">{j.company}</p>
+                      
+                      <div className="space-y-2 border-t border-border/60 pt-2.5 mb-4 text-[11px]">
+                        <div className="flex items-start gap-1.5 text-text-secondary">
+                          <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                          <span className="leading-snug">
+                            Evidência:{" "}
+                            <Link href={evidenceLink} className="text-text-primary font-medium hover:text-accent hover:underline">
+                              {evidenceText}
+                            </Link>
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-1.5 text-text-secondary">
+                          <span className="text-amber-400 shrink-0 mt-0.5">⟳</span>
+                          <span className="leading-snug">
+                            Gap:{" "}
+                            <Link href={gapLink} className="text-text-primary font-medium hover:text-accent hover:underline">
+                              {gapText}
+                            </Link>
+                          </span>
+                        </div>
+                        {warning && (
+                          <div className="flex items-start gap-1.5 text-text-secondary">
+                            <span className="text-red-400 shrink-0 mt-0.5">🚩</span>
+                            <span className="text-text-tertiary leading-snug">{warning}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <Link href={`/jobs/${j.id}`} className="w-full mt-auto">
+                      <Button variant="primary" size="sm" className="w-full text-xs py-1.5 h-8">
+                        Preparar Candidatura
+                      </Button>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-8 rounded-xl border border-dashed p-6 text-center bg-bg-elevated/5">
+            <Sparkles className="h-6 w-6 mx-auto text-text-tertiary mb-2" />
+            <p className="text-xs text-text-secondary font-medium">Sem recomendações de alto aproveitamento hoje</p>
+            <p className="text-[11px] text-text-tertiary mt-0.5">Tente sincronizar novas fontes ou revisar as evidências de habilidades do seu perfil.</p>
           </div>
         )}
 

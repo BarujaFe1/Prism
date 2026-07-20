@@ -2,7 +2,7 @@ export type LocationType = "remote" | "hybrid" | "onsite";
 export type ContractType = "clt" | "pj" | "internship" | "freelancer" | "temporary" | "international";
 export type ExperienceLevel = "internship" | "trainee" | "junior" | "mid" | "senior" | "lead";
 export type SalaryPeriod = "yearly" | "monthly" | "weekly" | "hourly" | "contract";
-export type JobStatus = "new" | "saved" | "high_priority" | "preparing" | "applied" | "reviewing" | "interview" | "offer" | "rejected" | "ignored" | "archived";
+export type JobStatus = "new" | "saved" | "high_priority" | "preparing" | "applied" | "reviewing" | "testing" | "interview" | "offer" | "rejected" | "ignored" | "archived";
 export type FitLabel = "high" | "good" | "partial" | "low";
 export type SourceType = "linkedin" | "indeed" | "remoteok" | "google_jobs" | "gupy" | "workana" | "glassdoor" | "weworkremotely" | "wellfound" | "greenhouse" | "lever" | "remotive" | "hackernews" | "arbeitnow" | "jobicy" | "linkedin_rss" | "remote-co" | "4dayweek" | "nodesk" | "revelo" | "himalayas" | "stackoverflow" | "manual" | "csv" | "ashby" | "jobposting" | "custom" | "other";
 
@@ -99,6 +99,12 @@ export interface JobWithStatus {
   nextActionType: string | null;
   nextActionDate: string | null;
   lastContactedAt: string | null;
+  appliedAt: string | null;
+  checklistJson: string | null;
+  tailoredResume: string | null;
+  cvVersionUsed: string | null;
+  portfolioLinkUsed: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -150,6 +156,8 @@ export interface ProfileData {
   resumeUrl?: string;
   resumeFilename?: string;
   contactEmail?: string;
+  skillsEvidence?: any[];
+  learningBacklog?: any[];
 }
 
 export interface SettingsData {

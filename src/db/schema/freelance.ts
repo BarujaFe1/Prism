@@ -30,6 +30,10 @@ export const freelanceProjects = sqliteTable("freelance_projects", {
   hourlyRateMin: real("hourly_rate_min"),
   hourlyRateMax: real("hourly_rate_max"),
 
+  rawCompensation: text("raw_compensation"),
+  compensationParseConfidence: real("compensation_parse_confidence"),
+  needsManualCompensationReview: integer("needs_manual_compensation_review", { mode: "boolean" }).default(false),
+
   skills: text("skills"),
   category: text("category"),
   subcategory: text("subcategory"),
