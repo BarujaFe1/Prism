@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, master, feat/employability-transformation, chore/portfolio-quality-pass]
   pull_request:
+    branches: [main, master]
 
 permissions:
   contents: read
