@@ -41,10 +41,11 @@ const PROJECT_SUGGESTIONS: Record<string, string> = {
 const BR_CATEGORIES = [
   { id: "novas_p0", label: "Novas P0", icon: "🔥" },
   { id: "estagio_junior", label: "Estágio / Júnior", icon: "🎓" },
-  { id: "fullstack", label: "Full-Stack / Product", icon: "🧩" },
+  { id: "dev", label: "Vertente Dev", icon: "🧩" },
+  { id: "dados", label: "Vertente Dados", icon: "📊" },
+  { id: "fullstack", label: "Full-Stack / Product", icon: "💻" },
   { id: "frontend", label: "Frontend React/Next", icon: "🖥️" },
   { id: "backend", label: "Backend / APIs", icon: "⚙️" },
-  { id: "dados", label: "Dados / Analytics", icon: "📊" },
   { id: "fintechs", label: "Fintechs e Bancos", icon: "💳" },
   { id: "saas", label: "SaaS / Softwares", icon: "🌐" },
   { id: "ecommerce", label: "E-commerce", icon: "🛒" },
@@ -65,6 +66,14 @@ export default function RadarPage() {
     setSearchFocus("");
   };
 
+  const applyDevFocus = () => {
+    setModalidadeFilters(["remote", "hybrid"]);
+    setSeniorityFilters(["internship", "junior"]);
+    setSearchFocus(
+      "full stack|fullstack|product engineer|software engineer|desenvolvedor|frontend|front-end|backend|back-end|next.js|typescript|react"
+    );
+  };
+
   const applyFullStackFocus = () => {
     setModalidadeFilters(["remote", "hybrid"]);
     setSeniorityFilters(["internship", "junior"]);
@@ -80,7 +89,9 @@ export default function RadarPage() {
   const applyDataFocus = () => {
     setModalidadeFilters(["remote", "hybrid"]);
     setSeniorityFilters(["internship", "junior", "trainee"]);
-    setSearchFocus("data analyst|analista de dados|analytics|qualidade de dados|etl");
+    setSearchFocus(
+      "data analyst|analista de dados|analytics|qualidade de dados|etl|estatística|estatistica|ciência de dados|cientista de dados|business intelligence|bi "
+    );
   };
 
   const clearFocusPresets = () => {
@@ -251,10 +262,11 @@ export default function RadarPage() {
     const categories: Record<string, JobWithStatus[]> = {
       novas_p0: [],
       estagio_junior: [],
+      dev: [],
+      dados: [],
       fullstack: [],
       frontend: [],
       backend: [],
-      dados: [],
       fintechs: [],
       saas: [],
       ecommerce: [],
@@ -308,6 +320,14 @@ export default function RadarPage() {
       }
 
       const techHay = `${titleLower} ${(j.technologies || []).join(" ").toLowerCase()} ${(j.description || "").toLowerCase()}`;
+      const vertical =
+        details?.vertical === "dev" || details?.vertical === "dados"
+          ? details.vertical
+          : null;
+
+      if (j.status === "new" && (vertical === "dev" || (!vertical && /full[\s-]?stack|product engineer|software engineer|desenvolvedor|developer|front[\s-]?end|back[\s-]?end|next\.?js|typescript|react|node/.test(techHay) && !/data analyst|analista de dados|cientista de dados|estat[ií]stic/.test(techHay)))) {
+        categories.dev.push(j);
+      }
       if (
         j.status === "new" &&
         /full[\s-]?stack|product engineer|engenheiro de produto|next\.?js|typescript/.test(techHay)
@@ -329,9 +349,10 @@ export default function RadarPage() {
       }
       if (
         j.status === "new" &&
-        /data analyst|analista de dados|analytics|ciência de dados|cientista de dados|etl|pandas|bi\b/.test(
-          techHay
-        )
+        (vertical === "dados" ||
+          /data analyst|analista de dados|analytics|ciência de dados|cientista de dados|etl|pandas|bi\b|estat[ií]stic|qualidade de dados|business intelligence/.test(
+            techHay
+          ))
       ) {
         categories.dados.push(j);
       }
@@ -428,26 +449,33 @@ export default function RadarPage() {
         <div className="mb-6 rounded-xl border border-border bg-bg p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div>
-              <p className="text-sm font-semibold text-text-primary">Foco da busca</p>
+              <p className="text-sm font-semibold text-text-primary">Duas vertentes · esforço igual</p>
               <p className="text-xs text-text-tertiary">
-                Presets alinhados ao perfil de estágio/full-stack · planos no{" "}
+                Dev (software) e Dados (analista · USP) separados — planos no{" "}
                 <Link href="/profile#application-plans-card" className="text-accent underline">
                   perfil
+                </Link>
+                {" · "}
+                <Link href="/today" className="text-accent underline">
+                  Hoje
                 </Link>
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="primary" onClick={applyDevFocus} className="text-xs">
+                Vertente Dev
+              </Button>
+              <Button size="sm" variant="primary" onClick={applyDataFocus} className="text-xs">
+                Vertente Dados
+              </Button>
               <Button size="sm" variant="secondary" onClick={applyInternshipFocus} className="text-xs">
-                Estágio / Júnior remoto-híbrido
+                Estágio / Júnior
               </Button>
-              <Button size="sm" variant="secondary" onClick={applyFullStackFocus} className="text-xs">
-                Full-Stack / Product
+              <Button size="sm" variant="ghost" onClick={applyFullStackFocus} className="text-xs">
+                Só Full-Stack
               </Button>
-              <Button size="sm" variant="secondary" onClick={applyFrontendFocus} className="text-xs">
-                Frontend React/Next
-              </Button>
-              <Button size="sm" variant="secondary" onClick={applyDataFocus} className="text-xs">
-                Dados / Analytics
+              <Button size="sm" variant="ghost" onClick={applyFrontendFocus} className="text-xs">
+                Só Frontend
               </Button>
               <Button size="sm" variant="ghost" onClick={clearFocusPresets} className="text-xs">
                 Limpar

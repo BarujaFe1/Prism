@@ -1,16 +1,23 @@
-# Career Tracks
+# Career verticals & tracks
 
-Tabela `career_tracks` com seeds A–F:
+Prism trata **duas vertentes com esforço igual**, bem separadas:
+
+| Vertente | Foco | Track principal |
+|---|---|---|
+| **Dev** | Full-Stack, Frontend, Backend, Product Engineer | `fullstack_product` |
+| **Dados** | Analista de Dados, BI, Estatística USP, data products | `data_analytics` |
+
+Sub-tracks (Frontend, Backend, AI, Mobile) reforçam uma vertente; não competem com ela.
 
 | Key | Label | Default |
 |---|---|---|
-| fullstack_product | Full-Stack / Product | Ativo · prioridade 1 |
-| data_analytics | Data / Analytics | Ativo · 2 |
-| frontend | Front-End | Ativo · 3 |
-| backend | Back-End | Ativo · 4 |
-| ai_automation | AI / Automation | Off (só com evidência de eval) |
-| mobile | Mobile RN | Off (vagas aderentes) |
+| fullstack_product | Dev · Full-Stack | Ativo · prioridade 1 · weight 1 |
+| data_analytics | Dados · Analista / USP | Ativo · prioridade 1 · weight 1 |
+| frontend | Dev · sub Front-End | Ativo · 3 |
+| backend | Dev · sub Back-End | Ativo · 3 |
+| ai_automation | Dados · sub AI | Off |
+| mobile | Dev · sub Mobile | Off |
 
-API: `GET/PATCH /api/tracks`. UI: Perfil → Career Tracks.
+Scoring: domínios Dev e Dados recebem `domainScore = 1.0`. Today diversifica Top N entre as duas vertentes.
 
-Seed: `npm run career:seed`.
+API: `GET/PATCH /api/tracks`. UI: Perfil → vertentes. Seed: `npm run career:seed`.

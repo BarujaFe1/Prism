@@ -24,6 +24,7 @@ type TodayPayload = {
     reason: string;
     href: string;
     score?: number;
+    vertical?: "dev" | "dados" | "other";
   }[];
   followUpsOverdue: { id: string; title: string; company: string }[];
   wip: {
@@ -38,6 +39,8 @@ type TodayPayload = {
   dontDoNow: string[];
   learningFocus: { title: string; skill: string; reason: string } | null;
   topJobs: { id: string; title: string; company: string; score: number | null }[];
+  topDev: { id: string; title: string; company: string; score: number | null }[];
+  topDados: { id: string; title: string; company: string; score: number | null }[];
 };
 
 export function TodayClient() {
@@ -82,7 +85,8 @@ export function TodayClient() {
           Hoje
         </h1>
         <p className="text-sm text-text-tertiary mt-1">
-          O que fazer agora para aumentar chance de conversa/entrevista — no máximo 3 prioridades.
+          Duas vertentes com esforço igual — <span className="text-text-secondary">Dev</span> e{" "}
+          <span className="text-text-secondary">Dados</span>. No máximo 3 prioridades misturando as duas.
         </p>
       </div>
 
@@ -128,11 +132,19 @@ export function TodayClient() {
               href={a.href}
               className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-bg-elevated/20 px-4 py-3 hover:border-accent/40 transition-colors"
             >
-              <div className="text-left">
-                <p className="text-[10px] uppercase tracking-wide text-text-tertiary">
-                  {i + 1}. {a.kind}
-                </p>
-                <p className="text-sm font-medium text-text-primary mt-0.5">{a.title}</p>
+              <div className="text-left min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-[10px] uppercase tracking-wide text-text-tertiary">
+                    {i + 1}. {a.kind}
+                  </p>
+                  {a.vertical === "dev" && (
+                    <Badge variant="accent" className="text-[9px]">Dev</Badge>
+                  )}
+                  {a.vertical === "dados" && (
+                    <Badge variant="success" className="text-[9px]">Dados</Badge>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-text-primary mt-0.5 truncate">{a.title}</p>
                 <p className="text-[11px] text-text-tertiary mt-1">{a.reason}</p>
               </div>
               <ArrowRight className="h-4 w-4 text-accent shrink-0" />
@@ -140,6 +152,63 @@ export function TodayClient() {
           ))}
         </CardContent>
       </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <h2 className="text-sm font-semibold text-text-primary">Vertente Dev</h2>
+            <p className="text-[11px] text-text-tertiary">Full-Stack · Frontend · Backend · Product</p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(data?.topDev || []).length === 0 && (
+              <p className="text-xs text-text-tertiary">Nenhuma vaga Dev elegível acima do piso.</p>
+            )}
+            {(data?.topDev || []).map((j) => (
+              <Link
+                key={j.id}
+                href={`/jobs/${j.id}`}
+                className="block rounded-lg border border-border/40 px-3 py-2 hover:border-accent/40"
+              >
+                <p className="text-xs font-medium text-text-primary truncate">{j.title}</p>
+                <p className="text-[10px] text-text-tertiary">
+                  {j.company}
+                  {j.score != null ? ` · ${(j.score).toFixed(2)}` : ""}
+                </p>
+              </Link>
+            ))}
+            <Link href="/?focus=dev" className="text-[11px] text-accent inline-block mt-1">
+              Abrir radar Dev →
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <h2 className="text-sm font-semibold text-text-primary">Vertente Dados</h2>
+            <p className="text-[11px] text-text-tertiary">Analista · BI · Estatística USP · Data products</p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(data?.topDados || []).length === 0 && (
+              <p className="text-xs text-text-tertiary">Nenhuma vaga Dados elegível acima do piso.</p>
+            )}
+            {(data?.topDados || []).map((j) => (
+              <Link
+                key={j.id}
+                href={`/jobs/${j.id}`}
+                className="block rounded-lg border border-border/40 px-3 py-2 hover:border-accent/40"
+              >
+                <p className="text-xs font-medium text-text-primary truncate">{j.title}</p>
+                <p className="text-[10px] text-text-tertiary">
+                  {j.company}
+                  {j.score != null ? ` · ${(j.score).toFixed(2)}` : ""}
+                </p>
+              </Link>
+            ))}
+            <Link href="/?focus=dados" className="text-[11px] text-accent inline-block mt-1">
+              Abrir radar Dados →
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
