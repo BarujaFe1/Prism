@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
 
 # next.js
 /.next/
@@ -23,6 +25,7 @@
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,8 +33,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — keep examples commit-safe
+.env
+.env.*
+!.env.example
+
+# local databases and personal data exports
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+/data/
+/exports/
+/backups/
 
 # vercel
 .vercel
@@ -40,6 +54,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local sqlite database & backups
-*.db
-/backups/
+# OS / IDE
+.idea/
+.vscode/
+!.vscode/extensions.json

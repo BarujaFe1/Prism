@@ -4,13 +4,17 @@ import { db } from "@/db";
 import {
   freelanceProjects,
   freelanceSources,
-  freelanceProposals,
 } from "@/db/schema";
-import { desc, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { demoModeBlockedResponse, isDemoMode } from "@/lib/api-guards";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
-  const sourceId = body.sourceId as string | undefined;
+  if (isDemoMode()) {
+    return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { sourceId?: string };
+  const sourceId = body.sourceId;
 
   const { results, errors } = await syncAllFreelanceSources(sourceId);
 

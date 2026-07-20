@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
+import {
+  demoModeBlockedResponse,
+  isDemoMode,
+  validationError,
+  apiError,
+} from "@/lib/api-guards";
 
 export async function POST(request: Request) {
   try {
+    if (isDemoMode()) {
+      return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+    }
+
     const body = await request.json();
     const { title, description, skills, clientName, platform, tone, wordLimit } = body;
 
     if (!title) {
-      return NextResponse.json({ error: "title is required" }, { status: 400 });
+      return NextResponse.json(validationError("title is required"), { status: 400 });
     }
 
     const toneStr = tone || "professional";
@@ -17,8 +27,9 @@ export async function POST(request: Request) {
     const template = generateCoverLetter(title, description || "", skillStr, clientStr, platform || "plataforma", toneStr, limit);
 
     return NextResponse.json({ coverLetter: template });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to generate cover letter";
+    return NextResponse.json(apiError("INTERNAL_ERROR", message), { status: 500 });
   }
 }
 

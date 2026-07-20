@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { jobs, profile, monitoredCompanies } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { computeScore } from "@/engine/scorer";
 import type { LocationType, ContractType, ExperienceLevel } from "@/types";
+import {
+  apiError,
+  demoModeBlockedResponse,
+  isDemoMode,
+} from "@/lib/api-guards";
 
 export async function POST() {
+  if (isDemoMode()) {
+    return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+  }
+
   const p = await db.select().from(profile).where(eq(profile.id, "default")).get();
   if (!p) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 400 });
+    return NextResponse.json(apiError("NOT_FOUND", "Profile not found"), {
+      status: 400,
+    });
   }
 
   const profileData = {

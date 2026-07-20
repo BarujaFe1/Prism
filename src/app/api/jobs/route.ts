@@ -1,148 +1,175 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { jobs, jobEvents } from "@/db/schema";
-import { desc, eq, like, or, and, sql } from "drizzle-orm";
+import { desc, eq, like, or, and, asc, inArray } from "drizzle-orm";
 import { generateId, statusLabel } from "@/lib/utils";
+import {
+  ALLOWED_JOB_PATCH_FIELDS,
+  ALLOWED_JOB_SORT,
+  asContractTypes,
+  asExperienceLevels,
+  asFitLabels,
+  asJobStatuses,
+  asLocationTypes,
+  clampInt,
+  demoModeBlockedResponse,
+  escapeLike,
+  isDemoMode,
+  parseCsvParam,
+  sanitizePatch,
+  validationError,
+  apiError,
+} from "@/lib/api-guards";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+  try {
+    const { searchParams } = new URL(request.url);
 
-  const search = searchParams.get("search") || "";
-  const status = searchParams.get("status") || "";
-  const source = searchParams.get("source") || "";
-  const locationType = searchParams.get("locationType") || "";
-  const contractType = searchParams.get("contractType") || "";
-  const experienceLevel = searchParams.get("experienceLevel") || "";
-  const fitLabel = searchParams.get("fitLabel") || "";
-  const sortBy = searchParams.get("sortBy") || "date";
-  const sortOrder = searchParams.get("sortOrder") || "desc";
-  const limit = parseInt(searchParams.get("limit") || "50");
-  const offset = parseInt(searchParams.get("offset") || "0");
-
-  const conditions = [];
-
-  if (search) {
-    conditions.push(
-      or(
-        like(jobs.title, `%${search}%`),
-        like(jobs.company, `%${search}%`),
-        like(jobs.description, `%${search}%`),
-        like(jobs.location, `%${search}%`)
-      )
+    const search = searchParams.get("search") || "";
+    const status = asJobStatuses(parseCsvParam(searchParams.get("status")));
+    const source = parseCsvParam(searchParams.get("source")).slice(0, 50);
+    const locationType = asLocationTypes(parseCsvParam(searchParams.get("locationType")));
+    const contractType = asContractTypes(parseCsvParam(searchParams.get("contractType")));
+    const experienceLevel = asExperienceLevels(
+      parseCsvParam(searchParams.get("experienceLevel"))
     );
+    const fitLabel = asFitLabels(parseCsvParam(searchParams.get("fitLabel")));
+    const sortByRaw = searchParams.get("sortBy") || "date";
+    const sortBy = ALLOWED_JOB_SORT.has(sortByRaw) ? sortByRaw : "date";
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
+    const limit = clampInt(searchParams.get("limit"), 50, 1, 500);
+    const offset = clampInt(searchParams.get("offset"), 0, 0, 100_000);
+
+    const conditions = [];
+
+    if (search) {
+      const pattern = `%${escapeLike(search.slice(0, 200))}%`;
+      conditions.push(
+        or(
+          like(jobs.title, pattern),
+          like(jobs.company, pattern),
+          like(jobs.description, pattern),
+          like(jobs.location, pattern)
+        )
+      );
+    }
+
+    if (status.length) conditions.push(inArray(jobs.status, status));
+    if (source.length) conditions.push(inArray(jobs.source, source));
+    if (locationType.length) conditions.push(inArray(jobs.locationType, locationType));
+    if (contractType.length) conditions.push(inArray(jobs.contractType, contractType));
+    if (experienceLevel.length) {
+      conditions.push(inArray(jobs.experienceLevel, experienceLevel));
+    }
+    if (fitLabel.length) conditions.push(inArray(jobs.fitLabel, fitLabel));
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    let orderBy;
+    switch (sortBy) {
+      case "score":
+        orderBy = sortOrder === "desc" ? desc(jobs.score) : asc(jobs.score);
+        break;
+      case "salary":
+        orderBy = sortOrder === "desc" ? desc(jobs.salaryMax) : asc(jobs.salaryMax);
+        break;
+      case "source":
+        orderBy = sortOrder === "desc" ? desc(jobs.source) : asc(jobs.source);
+        break;
+      default:
+        orderBy = sortOrder === "desc" ? desc(jobs.postedAt) : asc(jobs.postedAt);
+    }
+
+    const results = await db
+      .select()
+      .from(jobs)
+      .where(where)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    return NextResponse.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to list jobs";
+    return NextResponse.json(apiError("INTERNAL_ERROR", message), { status: 500 });
   }
-
-  if (status) {
-    const statuses = status.split(",");
-    conditions.push(sql`${jobs.status} IN (${statuses.join(",")})`);
-  }
-
-  if (source) {
-    const sources = source.split(",").map((s) => `'${s}'`).join(",");
-    conditions.push(sql`${jobs.source} IN (${sources})`);
-  }
-
-  if (locationType) {
-    const types = locationType.split(",").map((s) => `'${s}'`).join(",");
-    conditions.push(sql`${jobs.locationType} IN (${types})`);
-  }
-
-  if (contractType) {
-    const types = contractType.split(",").map((s) => `'${s}'`).join(",");
-    conditions.push(sql`${jobs.contractType} IN (${types})`);
-  }
-
-  if (experienceLevel) {
-    const levels = experienceLevel.split(",").map((s) => `'${s}'`).join(",");
-    conditions.push(sql`${jobs.experienceLevel} IN (${levels})`);
-  }
-
-  if (fitLabel) {
-    const labels = fitLabel.split(",").map((s) => `'${s}'`).join(",");
-    conditions.push(sql`${jobs.fitLabel} IN (${labels})`);
-  }
-
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-
-  let orderBy;
-  switch (sortBy) {
-    case "score":
-      orderBy = sortOrder === "desc" ? desc(jobs.score) : sql`${jobs.score} ASC`;
-      break;
-    case "salary":
-      orderBy = sortOrder === "desc" ? desc(jobs.salaryMax) : sql`${jobs.salaryMax} ASC`;
-      break;
-    case "source":
-      orderBy = sortOrder === "desc" ? desc(jobs.source) : sql`${jobs.source} ASC`;
-      break;
-    default:
-      orderBy = sortOrder === "desc" ? desc(jobs.postedAt) : sql`${jobs.postedAt} ASC`;
-  }
-
-  const results = await db
-    .select()
-    .from(jobs)
-    .where(where)
-    .orderBy(orderBy)
-    .limit(limit)
-    .offset(offset);
-
-  return NextResponse.json(results);
 }
 
 export async function PATCH(request: Request) {
-  const body = await request.json();
-  const { id, ...updates } = body;
+  try {
+    if (isDemoMode()) {
+      return NextResponse.json(demoModeBlockedResponse(), { status: 403 });
+    }
 
-  if (!id) {
-    return NextResponse.json({ error: "id is required" }, { status: 400 });
-  }
+    const body = (await request.json()) as Record<string, unknown>;
+    const { id, ...updates } = body;
 
-  // Retrieve old status/action to record changes in the events log
-  const oldJob = await db
-    .select({ status: jobs.status })
-    .from(jobs)
-    .where(eq(jobs.id, id))
-    .get();
+    if (!id || typeof id !== "string") {
+      return NextResponse.json(validationError("id is required"), { status: 400 });
+    }
 
-  await db.update(jobs).set(updates).where(eq(jobs.id, id));
+    const sanitized = sanitizePatch(updates, ALLOWED_JOB_PATCH_FIELDS);
+    if (Object.keys(sanitized).length === 0) {
+      return NextResponse.json(validationError("no valid fields to update"), {
+        status: 400,
+      });
+    }
 
-  // Record status changed event
-  if (updates.status && (!oldJob || oldJob.status !== updates.status)) {
-    const fromStatus = oldJob ? oldJob.status : "new";
-    const toStatus = updates.status;
-    await db.insert(jobEvents).values({
-      id: generateId(),
-      jobId: id,
-      eventType: "status_changed",
-      description: `Status alterado de "${statusLabel(fromStatus)}" para "${statusLabel(toStatus)}"`,
-      metadata: { from: fromStatus, to: toStatus },
-      occurredAt: new Date().toISOString(),
-    });
-  }
+    const oldJob = await db
+      .select({ status: jobs.status })
+      .from(jobs)
+      .where(eq(jobs.id, id))
+      .get();
 
-  // Record next action scheduled event
-  if (updates.nextActionType && updates.nextActionDate) {
-    const actionLabel = (type: string) => {
-      const map: Record<string, string> = {
-        follow_up: "Follow-up",
-        prepare: "Preparar candidatura",
-        apply: "Aplicar",
-        interview: "Entrevista",
-        test: "Teste técnico",
-        thank_you: "Agradecimento",
+    await db
+      .update(jobs)
+      .set({ ...sanitized, updatedAt: new Date().toISOString() })
+      .where(eq(jobs.id, id));
+
+    if (
+      typeof sanitized.status === "string" &&
+      (!oldJob || oldJob.status !== sanitized.status)
+    ) {
+      const fromStatus = oldJob ? oldJob.status : "new";
+      const toStatus = sanitized.status;
+      await db.insert(jobEvents).values({
+        id: generateId(),
+        jobId: id,
+        eventType: "status_changed",
+        description: `Status alterado de "${statusLabel(fromStatus)}" para "${statusLabel(toStatus)}"`,
+        metadata: { from: fromStatus, to: toStatus },
+        occurredAt: new Date().toISOString(),
+      });
+    }
+
+    if (
+      typeof sanitized.nextActionType === "string" &&
+      typeof sanitized.nextActionDate === "string"
+    ) {
+      const actionLabel = (type: string) => {
+        const map: Record<string, string> = {
+          follow_up: "Follow-up",
+          prepare: "Preparar candidatura",
+          apply: "Aplicar",
+          interview: "Entrevista",
+          test: "Teste técnico",
+          thank_you: "Agradecimento",
+        };
+        return map[type] || type;
       };
-      return map[type] || type;
-    };
-    await db.insert(jobEvents).values({
-      id: generateId(),
-      jobId: id,
-      eventType: "action_scheduled",
-      description: `Ação agendada: "${actionLabel(updates.nextActionType)}" para ${new Date(updates.nextActionDate).toLocaleDateString("pt-BR")}`,
-      metadata: { type: updates.nextActionType, date: updates.nextActionDate },
-      occurredAt: new Date().toISOString(),
-    });
-  }
+      await db.insert(jobEvents).values({
+        id: generateId(),
+        jobId: id,
+        eventType: "action_scheduled",
+        description: `Ação agendada: "${actionLabel(sanitized.nextActionType)}" para ${new Date(sanitized.nextActionDate).toLocaleDateString("pt-BR")}`,
+        metadata: { type: sanitized.nextActionType, date: sanitized.nextActionDate },
+        occurredAt: new Date().toISOString(),
+      });
+    }
 
-  return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update job";
+    return NextResponse.json(apiError("INTERNAL_ERROR", message), { status: 500 });
+  }
 }
