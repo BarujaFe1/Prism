@@ -140,6 +140,8 @@ Hosted read-only demo (Vercel + Turso) is **planned**, not claimed as live.
 
 ## Docs
 
+- [`docs/case-study/prism-case-study-pt-BR.md`](docs/case-study/prism-case-study-pt-BR.md) · [EN](docs/case-study/prism-case-study-en.md)
+- [`docs/career/`](docs/career/) — currículo, LinkedIn, guia de entrevista
 - [`docs/deployment.md`](docs/deployment.md) · [`docs/demo-mode.md`](docs/demo-mode.md)
 - [`docs/SCORING.md`](docs/SCORING.md) · [`docs/CONNECTORS.md`](docs/CONNECTORS.md)
 - [`docs/execution/`](docs/execution/) — transformation progress for this portfolio pass

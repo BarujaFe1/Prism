@@ -32,9 +32,17 @@
 2. Próximo: case study bilíngue, ativos de carreira, E2E Playwright, ou push/PR para `main`
 3. Deploy Vercel+Turso ainda precisa de credenciais do usuário
 
-### Pendências
-- E2E Playwright + axe
-- Screenshots PNG reais
-- Case study + career assets
-- Public demo URL
-- Fase 3 refactor profundo (adiável; não bloqueia empregabilidade imediata)
+### Fase 10–12 (parcial nesta rodada)
+
+- Case study PT/EN
+- Ativos `docs/career/*` (currículo, LinkedIn, estratégia, ATS, tracker, market-evidence amostra)
+- Relatório final parcial em `05-final-report.md`
+
+### Commits desta sessão (continuação)
+- `0af8d62` ci: templates…
+- `a46c7f0` docs: README + banner + scoring tests…
+- (pendente) docs: case study + career assets
+
+### Validação recente
+- `npm test` → 25 pass
+- `npm run typecheck` / `npm run build` → OK
