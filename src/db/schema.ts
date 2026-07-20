@@ -260,6 +260,11 @@ export const settings = sqliteTable("settings", {
   alertHighFitDays: integer("alert_high_fit_days").default(2),
   dailyBriefingEnabled: integer("daily_briefing_enabled", { mode: "boolean" }).default(true),
   lastBackupAt: text("last_backup_at"),
+  /** Focus Guard: inbox of deferred ideas */
+  dontDoNow: text("dont_do_now", { mode: "json" }).$type<string[]>().default([]),
+  wipMaxPreparing: integer("wip_max_preparing").default(5),
+  wipMaxLearning: integer("wip_max_learning").default(2),
+  wipMaxPortfolioProjects: integer("wip_max_portfolio_projects").default(1),
   updatedAt: text("updated_at")
     .notNull()
     .default(sql`(current_timestamp)`),
@@ -277,6 +282,58 @@ export const applicationTasks = sqliteTable("application_tasks", {
     .notNull()
     .default(sql`(current_timestamp)`),
   completedAt: text("completed_at"),
+});
+
+/** User-managed career tracks (Full-Stack, Data, Front, Back, AI, Mobile). */
+export const careerTracks = sqliteTable("career_tracks", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  priority: integer("priority").notNull().default(100),
+  weight: real("weight").notNull().default(1),
+  roleTitles: text("role_titles", { mode: "json" }).$type<string[]>().default([]),
+  coreSkills: text("core_skills", { mode: "json" }).$type<string[]>().default([]),
+  secondarySkills: text("secondary_skills", { mode: "json" }).$type<string[]>().default([]),
+  headline: text("headline"),
+  resumeUrl: text("resume_url"),
+  markets: text("markets", { mode: "json" }).$type<string[]>().default([]),
+  contracts: text("contracts", { mode: "json" }).$type<string[]>().default([]),
+  negativeKeywords: text("negative_keywords", { mode: "json" }).$type<string[]>().default([]),
+  notes: text("notes"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+/** First-class project evidence vault (dual-written to profile.skillsEvidence). */
+export const projectEvidences = sqliteTable("project_evidences", {
+  id: text("id").primaryKey(),
+  projectName: text("project_name").notNull(),
+  projectUrl: text("project_url"),
+  demoUrl: text("demo_url"),
+  description: text("description"),
+  metrics: text("metrics"),
+  metricKind: text("metric_kind").default("unknown"), // demo | operational | unknown
+  approvedResumeBullet: text("approved_resume_bullet"),
+  confidence: text("confidence").notNull().default("medium"), // high | medium | low
+  associatedSkills: text("associated_skills", { mode: "json" }).$type<string[]>().default([]),
+  sourceType: text("source_type").default("user_declared"),
+  sourceUrl: text("source_url"),
+  verifiedByUser: integer("verified_by_user", { mode: "boolean" }).default(false),
+  lastReviewedAt: text("last_reviewed_at"),
+  evidenceLevel: integer("evidence_level").default(2), // 0–5
+  claimsAllowed: text("claims_allowed", { mode: "json" }).$type<string[]>().default([]),
+  claimsForbidden: text("claims_forbidden", { mode: "json" }).$type<string[]>().default([]),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
 });
 
 export * from "./schema/freelance";

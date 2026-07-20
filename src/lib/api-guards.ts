@@ -25,6 +25,10 @@ export const ALLOWED_SETTINGS_FIELDS = new Set([
   "alertHighFitDays",
   "dailyBriefingEnabled",
   "lastBackupAt",
+  "dontDoNow",
+  "wipMaxPreparing",
+  "wipMaxLearning",
+  "wipMaxPortfolioProjects",
 ]);
 
 export const ALLOWED_PROFILE_FIELDS = new Set([

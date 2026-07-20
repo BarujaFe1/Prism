@@ -38,6 +38,12 @@ run("npx", ["tsx", "scripts/demo-seed.ts", "seed"], {
   PRISM_ALLOW_DEMO_SEED: "1",
 });
 
+run("npx", ["tsx", "scripts/seed-career-foundation.ts"], {
+  DATABASE_URL: dbUrl,
+  PRISM_ALLOW_DEMO_SEED: "1",
+  PRISM_DEMO_MODE: "0",
+});
+
 if (!fs.existsSync(dbFile)) {
   console.error("demo:prepare failed — data/demo.db was not created");
   process.exit(1);

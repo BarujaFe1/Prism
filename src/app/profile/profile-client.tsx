@@ -14,6 +14,7 @@ import { locationTypeLabel, contractTypeLabel, experienceLevelLabel, fitLabelTex
 import Link from "next/link";
 
 import { buildPersonalProfilePayload, PERSONAL_NEGATIVE_KEYWORDS } from "@/lib/profile/personal-profile";
+import { buildCoverageHeatmap } from "@/lib/career/evidence-coverage";
 
 const PERSONAL_DEFAULTS = buildPersonalProfilePayload();
 
@@ -253,85 +254,80 @@ export function ProfileClient() {
   const summaryLength = profile.summary?.length || 0;
 
   const skillsAnalysis = useMemo(() => {
-    const allUniqueSkills = new Set<string>();
-    profile.skills.forEach(s => allUniqueSkills.add(s));
-    learningBacklog.forEach(t => { if (t.skill) allUniqueSkills.add(t.skill); });
-    
     const gapCounts: Record<string, number> = {};
     if (allJobs) {
-      allJobs.forEach(j => {
-        if (["new", "saved", "preparing", "applied", "reviewing", "testing", "interview"].includes(j.status)) {
-          j.technologies?.forEach(t => {
+      allJobs.forEach((j) => {
+        if (
+          ["new", "saved", "preparing", "applied", "reviewing", "testing", "interview"].includes(
+            j.status
+          )
+        ) {
+          j.technologies?.forEach((t) => {
             gapCounts[t] = (gapCounts[t] || 0) + 1;
           });
         }
       });
     }
-    
-    const green: { name: string; status: string; confidence: string }[] = [];
-    const yellow: { name: string; status: string; confidence: string }[] = [];
-    const red: { name: string; status: string; jobCount: number }[] = [];
-    const gray: { name: string; status: string }[] = [];
-    
-    allUniqueSkills.forEach(s => {
-      const sLower = s.toLowerCase().trim();
-      const evs = skillsEvidence.filter(e => 
-        e.associatedSkills?.map((x: string) => x.toLowerCase().trim()).includes(sLower)
-      );
-      const inBacklog = learningBacklog.some(t => t.skill?.toLowerCase().trim() === sLower && t.status === "todo");
-      
-      if (evs.length > 0) {
-        const hasStrong = evs.some(e => e.confidence === "high");
-        const hasLink = evs.some(e => e.projectUrl);
-        const hasMetric = evs.some(e => e.metrics);
-        const hasBullet = evs.some(e => e.approvedResumeBullet);
-        
-        let statusLabel = "Validada";
-        let color: "green" | "yellow" = "green";
-        
-        if (!hasLink) {
-          statusLabel = "Sem link";
-          color = "yellow";
-        } else if (!hasMetric) {
-          statusLabel = "Sem métrica";
-          color = "yellow";
-        } else if (!hasBullet) {
-          statusLabel = "Sem bullet";
-          color = "yellow";
-        } else if (!hasStrong) {
-          statusLabel = "Confiança Média/Baixa";
-          color = "yellow";
-        }
-        
-        if (color === "green") {
-          green.push({ name: s, status: statusLabel, confidence: evs[0].confidence });
-        } else {
-          yellow.push({ name: s, status: statusLabel, confidence: evs[0].confidence });
-        }
-      } else if (inBacklog) {
-        gray.push({ name: s, status: "Em estudo" });
-      } else {
-        const count = Object.entries(gapCounts).find(([name]) => name.toLowerCase() === sLower)?.[1] || 0;
-        if (count >= 2) {
-          red.push({ name: s, status: "Gap Recorrente", jobCount: count });
-        } else {
-          gray.push({ name: s, status: "Sem Evidência" });
-        }
-      }
+
+    const heatmap = buildCoverageHeatmap({
+      profileSkills: profile.skills,
+      evidences: skillsEvidence,
+      learningSkills: learningBacklog
+        .filter((t) => t.status === "todo")
+        .map((t) => t.skill)
+        .filter(Boolean),
+      jobTechCounts: gapCounts,
     });
-    
-    Object.entries(gapCounts).forEach(([tech, count]) => {
-      const techLower = tech.toLowerCase().trim();
-      const inProfile = profile.skills.some(s => s.toLowerCase().trim() === techLower);
-      const inBacklog = learningBacklog.some(t => t.skill?.toLowerCase().trim() === techLower);
-      
-      if (!inProfile && !inBacklog && count >= 2) {
-        red.push({ name: tech, status: "Falta no Perfil", jobCount: count });
-      }
-    });
-    
-    return { green, yellow, red, gray };
+
+    return {
+      green: heatmap.strong.map((r) => ({
+        name: r.skill,
+        status: r.label,
+        confidence: "high",
+      })),
+      yellow: [...heatmap.partial, ...heatmap.pending].map((r) => ({
+        name: r.skill,
+        status: r.label,
+        confidence: "medium",
+      })),
+      red: heatmap.realGaps
+        .filter((r) => r.jobDemand >= 2)
+        .map((r) => ({ name: r.skill, status: r.label, jobCount: r.jobDemand })),
+      gray: [
+        ...heatmap.unregistered.map((r) => ({ name: r.skill, status: r.label })),
+        ...heatmap.inLearning.map((r) => ({ name: r.skill, status: r.label })),
+        ...heatmap.realGaps
+          .filter((r) => r.jobDemand < 2)
+          .map((r) => ({ name: r.skill, status: r.label })),
+      ],
+    };
   }, [profile.skills, skillsEvidence, learningBacklog, allJobs]);
+
+  const { data: careerTracks = [], refetch: refetchTracks } = useQuery({
+    queryKey: ["career-tracks"],
+    queryFn: async () => {
+      const res = await fetch("/api/tracks");
+      return res.json() as Promise<
+        {
+          id: string;
+          label: string;
+          active: boolean;
+          priority: number;
+          weight: number;
+          notes: string | null;
+        }[]
+      >;
+    },
+  });
+
+  const toggleTrack = async (id: string, active: boolean) => {
+    await fetch("/api/tracks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, active }),
+    });
+    refetchTracks();
+  };
 
   const save = async () => {
     setSaving(true);
@@ -549,6 +545,53 @@ export function ProfileClient() {
                   className="mt-1 block w-full rounded-lg border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40 min-h-[80px] resize-y"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card id="career-tracks-card">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-text-primary">Career Tracks</h2>
+                <Link href="/evidence" className="text-[11px] text-accent">
+                  Evidence Vault →
+                </Link>
+              </div>
+              <p className="text-[11px] text-text-tertiary">
+                Ative tracks aderentes. Full-Stack/Product é o principal; Data permanece forte.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {careerTracks.length === 0 && (
+                <p className="text-xs text-text-tertiary">
+                  Nenhum track. Rode <code className="text-[10px]">npm run career:seed</code>.
+                </p>
+              )}
+              {careerTracks.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/50 px-3 py-2"
+                >
+                  <div className="text-left min-w-0">
+                    <p className="text-sm text-text-primary truncate">
+                      {t.priority}. {t.label}
+                    </p>
+                    {t.notes && (
+                      <p className="text-[10px] text-text-tertiary line-clamp-1">{t.notes}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleTrack(t.id, !t.active)}
+                    className={`text-[11px] px-2 py-1 rounded-md shrink-0 ${
+                      t.active
+                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                        : "bg-bg-elevated text-text-tertiary"
+                    }`}
+                  >
+                    {t.active ? "Ativo" : "Off"}
+                  </button>
+                </div>
+              ))}
             </CardContent>
           </Card>
 

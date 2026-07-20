@@ -32,6 +32,8 @@
     "demo:prepare": "npx tsx scripts/prepare-demo-db.ts",
     "profile:personal": "npx tsx scripts/seed-personal-profile.ts",
     "profile:patch-schema": "npx tsx scripts/patch-profile-schema.ts",
+    "career:patch-schema": "npx tsx scripts/patch-career-schema.ts",
+    "career:seed": "npx tsx scripts/seed-career-foundation.ts",
     "test:e2e": "playwright test",
     "screenshots": "npx tsx scripts/capture-screenshots.ts"
   },

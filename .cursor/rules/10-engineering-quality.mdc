@@ -1,0 +1,30 @@
+# Engineering Quality
+
+## Stack
+
+Next.js 16 · React 19 · TypeScript strict · Drizzle + SQLite/libSQL · TanStack Query
+
+Read `AGENTS.md` and `node_modules/next/dist/docs/` before changing Next APIs.
+
+## Validation
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Small reviewable commits. No mass formatting mixed with logic.
+
+## Security
+
+- Never commit `.env`, tokens, `*.db`, real application notes.
+- Parameterized SQL / Drizzle only; allowlisted PATCH fields.
+- Never client-set `score` / `fitLabel` / audit fields.
+- `PRISM_DEMO_MODE` blocks mutations, sync, rescore, expensive jobs.
+- Backup DB before destructive migrations.
+
+## TypeScript
+
+Prefer `unknown` at boundaries, schemas/unions, Drizzle inference. Avoid fake casts and critical `any`.
