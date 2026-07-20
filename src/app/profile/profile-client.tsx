@@ -310,6 +310,7 @@ export function ProfileClient() {
       return res.json() as Promise<
         {
           id: string;
+          key: string;
           label: string;
           active: boolean;
           priority: number;
