@@ -40,3 +40,4 @@ jobs:
         run: npm run build
         env:
           DATABASE_URL: file:ci.db
+          PRISM_DEMO_MODE: "1"

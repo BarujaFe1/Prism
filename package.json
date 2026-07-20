@@ -28,7 +28,8 @@
     "jobs:rescore": "npx tsx src/db/compute-scores.ts",
     "setup": "npm run db:push && npm run db:seed && npm run db:scores",
     "demo:seed": "npx tsx scripts/demo-seed.ts seed",
-    "demo:reset": "npx tsx scripts/demo-seed.ts reset"
+    "demo:reset": "npx tsx scripts/demo-seed.ts reset",
+    "demo:prepare": "npx tsx scripts/prepare-demo-db.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
