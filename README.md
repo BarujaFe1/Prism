@@ -6,6 +6,8 @@
 
 **EN summary:** Prism helps a single user (the builder) reduce the cognitive cost of finding, ranking, and tracking jobs/freelance leads using TypeScript, Next.js, SQLite/libSQL, and a deterministic scoring engine.
 
+![Prism Radar](docs/assets/prism-radar-desktop.png)
+
 ---
 
 ## Recruiter quick view (≈5 min)
@@ -17,7 +19,7 @@
 | **Proof** | CI workflow · unit tests · demo seed · demo read-only mode |
 | **Author** | Felipe Alírio Baruja — Estatística e Ciência de Dados (USP) · seeking estágio / trainee / júnior |
 | **Run** | `DATABASE_URL=file:demo.db npm run demo:seed` then `PRISM_DEMO_MODE=1 npm run dev` |
-| **Public demo URL** | Not provisioned yet (documented in `docs/deployment.md`) |
+| **Public demo URL** | https://prism-ruddy-sigma.vercel.app (read-only) |
 
 Positioning: *Desenvolvedor Full-Stack orientado a produto que constrói ferramentas de decisão com TypeScript, React/Next.js, Node, SQL, dados e automação.*
 
@@ -131,8 +133,8 @@ Hosted read-only demo (Vercel + Turso) is **planned**, not claimed as live.
 | Local demo + synthetic seed | Yes |
 | Unit tests + CI workflow in this branch | Yes |
 | Public auth | No |
-| Live public demo URL | No |
-| Real PNG screenshots in repo | Not yet (placeholders / capture later) |
+| Live public demo URL | Yes — https://prism-ruddy-sigma.vercel.app (`PRISM_DEMO_MODE=1`) |
+| Real PNG screenshots in repo | Yes — `docs/assets/` (captured from live demo) |
 | “Real-time” multi-source streaming | No — sync/connectors are batch/on-demand |
 | All 559 watchlist companies verified synced | No — file + tooling exist; coverage varies |
 

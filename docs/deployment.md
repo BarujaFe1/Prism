@@ -1,5 +1,14 @@
 # Deployment — Prism
 
+## Demo pública (somente leitura)
+
+- **URL:** https://prism-ruddy-sigma.vercel.app  
+- **Health:** https://prism-ruddy-sigma.vercel.app/api/health  
+- Env: `PRISM_DEMO_MODE=1`  
+- Banco: SQLite sintético gerado no build (`npm run demo:prepare`) e copiado para `/tmp` em runtime (sem Turso obrigatório para esta demo)
+
+Mutations retornam `403` / `DEMO_READ_ONLY`.
+
 ## Local (recomendado)
 
 ```bash
