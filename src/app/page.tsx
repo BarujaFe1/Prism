@@ -15,27 +15,35 @@ const MODALIDADE_FILTERS = ["remote", "hybrid", "onsite"];
 const SENIORITY_FILTERS = ["internship", "trainee", "junior", "mid", "senior", "lead"];
 
 const PROJECT_SUGGESTIONS: Record<string, string> = {
-  sql: "DataFlow ou Maestro",
-  python: "DataFlow ou Disk Água",
+  sql: "Prism, OpsLedger ou SignalHub",
+  postgresql: "Maestro (Supabase)",
+  python: "DataFlow, OpsLedger ou SignalHub",
   "data quality": "DataFlow",
-  pandas: "Disk Água ou LançaEnsaio",
-  "google sheets": "Disk Água ou Form2Dashboard",
-  "next.js": "Prism ou Form2Dashboard",
-  nextjs: "Prism ou Form2Dashboard",
-  react: "Prism",
-  typescript: "Prism",
-  fastapi: "Maestro",
-  scraping: "Disk Água",
-  selenium: "Disk Água",
-  "a/b testing": "StatLab",
-  "teste a/b": "StatLab",
-  statistics: "StatLab",
-  estatistica: "StatLab"
+  pandas: "DataFlow ou OpsLedger",
+  fastapi: "DataFlow, OpsLedger ou SignalHub",
+  "next.js": "Prism, DataFlow ou OpsLedger",
+  nextjs: "Prism, DataFlow ou OpsLedger",
+  react: "Prism ou DataFlow",
+  typescript: "Prism, DataFlow ou LançaEnsaio",
+  "node.js": "Prism",
+  nodejs: "Prism",
+  "react native": "Maestro ou LançaEnsaio",
+  expo: "Maestro ou LançaEnsaio",
+  supabase: "Maestro ou LançaEnsaio",
+  sqlite: "Prism ou OpsLedger",
+  drizzle: "Prism",
+  etl: "DataFlow",
+  automação: "LançaEnsaio ou SignalHub",
+  "github actions": "Prism (meta de CI completa)",
 };
 
 const BR_CATEGORIES = [
   { id: "novas_p0", label: "Novas P0", icon: "🔥" },
   { id: "estagio_junior", label: "Estágio / Júnior", icon: "🎓" },
+  { id: "fullstack", label: "Full-Stack / Product", icon: "🧩" },
+  { id: "frontend", label: "Frontend React/Next", icon: "🖥️" },
+  { id: "backend", label: "Backend / APIs", icon: "⚙️" },
+  { id: "dados", label: "Dados / Analytics", icon: "📊" },
   { id: "fintechs", label: "Fintechs e Bancos", icon: "💳" },
   { id: "saas", label: "SaaS / Softwares", icon: "🌐" },
   { id: "ecommerce", label: "E-commerce", icon: "🛒" },
@@ -48,6 +56,37 @@ const BR_CATEGORIES = [
 export default function RadarPage() {
   const [modalidadeFilters, setModalidadeFilters] = useState<string[]>([]);
   const [seniorityFilters, setSeniorityFilters] = useState<string[]>([]);
+  const [searchFocus, setSearchFocus] = useState<string>("");
+
+  const applyInternshipFocus = () => {
+    setModalidadeFilters(["remote", "hybrid"]);
+    setSeniorityFilters(["internship", "junior", "trainee"]);
+    setSearchFocus("");
+  };
+
+  const applyFullStackFocus = () => {
+    setModalidadeFilters(["remote", "hybrid"]);
+    setSeniorityFilters(["internship", "junior"]);
+    setSearchFocus("full stack|fullstack|product engineer|next.js|typescript");
+  };
+
+  const applyFrontendFocus = () => {
+    setModalidadeFilters(["remote", "hybrid"]);
+    setSeniorityFilters(["internship", "junior"]);
+    setSearchFocus("frontend|front-end|react|next.js");
+  };
+
+  const applyDataFocus = () => {
+    setModalidadeFilters(["remote", "hybrid"]);
+    setSeniorityFilters(["internship", "junior", "trainee"]);
+    setSearchFocus("data analyst|analista de dados|analytics|qualidade de dados|etl");
+  };
+
+  const clearFocusPresets = () => {
+    setModalidadeFilters([]);
+    setSeniorityFilters([]);
+    setSearchFocus("");
+  };
 
   const toggleModalidade = (val: string) => {
     setModalidadeFilters((prev) => prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]);
@@ -130,9 +169,14 @@ export default function RadarPage() {
 
       if (modalidadeFilters.length > 0 && (!j.locationType || !modalidadeFilters.includes(j.locationType))) return false;
       if (seniorityFilters.length > 0 && (!j.experienceLevel || !seniorityFilters.includes(j.experienceLevel))) return false;
+      if (searchFocus) {
+        const hay = `${j.title} ${j.company} ${(j.technologies || []).join(" ")} ${j.description || ""}`.toLowerCase();
+        const parts = searchFocus.toLowerCase().split("|").map((p) => p.trim()).filter(Boolean);
+        if (parts.length && !parts.some((p) => hay.includes(p))) return false;
+      }
       return true;
     });
-  }, [allJobs, modalidadeFilters, seniorityFilters, topThreeIds]);
+  }, [allJobs, modalidadeFilters, seniorityFilters, topThreeIds, searchFocus]);
 
   const highFitJobs = useMemo(() => {
     return filteredNewJobs.filter((j) => (j.score ?? 0) >= 0.85).slice(0, 10);
@@ -219,6 +263,10 @@ export default function RadarPage() {
     const categories: Record<string, JobWithStatus[]> = {
       novas_p0: [],
       estagio_junior: [],
+      fullstack: [],
+      frontend: [],
+      backend: [],
+      dados: [],
       fintechs: [],
       saas: [],
       ecommerce: [],
@@ -269,6 +317,35 @@ export default function RadarPage() {
         titleLower.includes("intern");
       if (j.status === "new" && isJuniorOrIntern) {
         categories.estagio_junior.push(j);
+      }
+
+      const techHay = `${titleLower} ${(j.technologies || []).join(" ").toLowerCase()} ${(j.description || "").toLowerCase()}`;
+      if (
+        j.status === "new" &&
+        /full[\s-]?stack|product engineer|engenheiro de produto|next\.?js|typescript/.test(techHay)
+      ) {
+        categories.fullstack.push(j);
+      }
+      if (
+        j.status === "new" &&
+        /front[\s-]?end|react|ui engineer|interface/.test(techHay) &&
+        !/back[\s-]?end only/.test(techHay)
+      ) {
+        categories.frontend.push(j);
+      }
+      if (
+        j.status === "new" &&
+        /back[\s-]?end|node\.?js|api|fastapi|postgresql|sql/.test(techHay)
+      ) {
+        categories.backend.push(j);
+      }
+      if (
+        j.status === "new" &&
+        /data analyst|analista de dados|analytics|ciência de dados|cientista de dados|etl|pandas|bi\b/.test(
+          techHay
+        )
+      ) {
+        categories.dados.push(j);
       }
 
       // 3. Fintechs
@@ -357,6 +434,68 @@ export default function RadarPage() {
               <p className={`text-2xl font-semibold mt-1 tabular-nums ${s.color}`}>{s.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* Planos + presets de foco para a busca pessoal */}
+        <div className="mb-6 rounded-xl border border-border bg-bg p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div>
+              <p className="text-sm font-semibold text-text-primary">Foco da busca</p>
+              <p className="text-xs text-text-tertiary">
+                Presets alinhados ao perfil de estágio/full-stack · planos no{" "}
+                <Link href="/profile#application-plans-card" className="text-accent underline">
+                  perfil
+                </Link>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={applyInternshipFocus} className="text-xs">
+                Estágio / Júnior remoto-híbrido
+              </Button>
+              <Button size="sm" variant="secondary" onClick={applyFullStackFocus} className="text-xs">
+                Full-Stack / Product
+              </Button>
+              <Button size="sm" variant="secondary" onClick={applyFrontendFocus} className="text-xs">
+                Frontend React/Next
+              </Button>
+              <Button size="sm" variant="secondary" onClick={applyDataFocus} className="text-xs">
+                Dados / Analytics
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearFocusPresets} className="text-xs">
+                Limpar
+              </Button>
+            </div>
+          </div>
+          {Array.isArray((profile as { applicationPlans?: unknown })?.applicationPlans) &&
+            ((profile as { applicationPlans: { id: string; title: string; weeklyTarget: number; active: boolean }[] })
+              .applicationPlans || []
+            ).filter((p) => p.active).length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                {(
+                  profile as {
+                    applicationPlans: {
+                      id: string;
+                      title: string;
+                      weeklyTarget: number;
+                      roleFocus?: string[];
+                      active: boolean;
+                    }[];
+                  }
+                ).applicationPlans
+                  .filter((p) => p.active)
+                  .map((plan) => (
+                    <div
+                      key={plan.id}
+                      className="rounded-lg border border-border/70 bg-bg-elevated/20 px-3 py-2 text-left"
+                    >
+                      <p className="text-[11px] font-semibold text-text-primary line-clamp-2">{plan.title}</p>
+                      <p className="text-[10px] text-text-tertiary mt-1">
+                        Meta {plan.weeklyTarget}/sem · {(plan.roleFocus || []).slice(0, 2).join(", ")}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            )}
         </div>
 
         {/* Urgent follow-ups warning if any exist */}

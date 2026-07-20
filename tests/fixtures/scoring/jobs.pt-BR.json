@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "purpose": "Synthetic golden set for ranking regression — not production metrics",
+    "locale": "pt-BR",
+    "created": "2026-07-20"
+  },
+  "jobs": [
+    {
+      "id": "g1",
+      "label": "relevante",
+      "title": "Estágio Full-Stack TypeScript",
+      "company": "Orbita Labs",
+      "description": "React Next.js TypeScript Node SQL mentoria",
+      "technologies": ["TypeScript", "React", "Next.js", "SQL"],
+      "locationType": "hybrid",
+      "experienceLevel": "internship",
+      "contractType": "internship"
+    },
+    {
+      "id": "g2",
+      "label": "parcialmente_relevante",
+      "title": "Frontend Mid Angular",
+      "company": "Legacy Soft",
+      "description": "AngularJS jQuery IE11",
+      "technologies": ["AngularJS", "jQuery"],
+      "locationType": "onsite",
+      "experienceLevel": "mid",
+      "contractType": "clt"
+    },
+    {
+      "id": "g3",
+      "label": "irrelevante",
+      "title": "Sales Development Representative",
+      "company": "QuotaUp",
+      "description": "Cold calling marketing CRM",
+      "technologies": [],
+      "locationType": "onsite",
+      "experienceLevel": "junior",
+      "contractType": "clt"
+    },
+    {
+      "id": "g4",
+      "label": "suprimida",
+      "title": "Staff Platform Architect",
+      "company": "MegaCorp",
+      "description": "Kubernetes Kafka rockstar ninja 12 years",
+      "technologies": ["Kubernetes", "Kafka"],
+      "locationType": "onsite",
+      "experienceLevel": "lead",
+      "contractType": "international"
+    },
+    {
+      "id": "g5",
+      "label": "red_flags",
+      "title": "Rockstar Developer",
+      "company": "Hype",
+      "description": "Unpaid trial ninja wizard culture",
+      "technologies": ["JavaScript"],
+      "locationType": "remote",
+      "experienceLevel": "junior",
+      "contractType": "pj"
+    }
+  ]
+}

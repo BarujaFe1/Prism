@@ -63,15 +63,16 @@ const DATE_OPTIONS = [
 ];
 
 const DOMAIN_OPTIONS = [
+  { key: "fullstack_backend", label: "Full-Stack / Product / Backend" },
+  { key: "frontend", label: "Frontend" },
+  { key: "software_engineering", label: "Eng. de Software" },
+  { key: "fullstack_dados", label: "Full-Stack com Dados" },
   { key: "data", label: "Dados" },
   { key: "bi_analytics", label: "BI e Analytics" },
   { key: "data_engineering", label: "Engenharia de Dados" },
   { key: "produto_dados", label: "Produto de Dados" },
   { key: "estatistica", label: "Estatística e Experimentos" },
   { key: "ia_aplicada", label: "IA Aplicada" },
-  { key: "fullstack_dados", label: "Full-Stack com Dados" },
-  { key: "fullstack_backend", label: "Backend / Fullstack Geral" },
-  { key: "software_engineering", label: "Eng. de Software" },
   { key: "design", label: "Design" },
   { key: "legal", label: "Jurídico" },
   { key: "sales", label: "Vendas / Marketing" },

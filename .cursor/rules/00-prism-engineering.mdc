@@ -1,0 +1,43 @@
+# Prism Engineering Rules
+
+## Mission
+
+Prism is a **local-first** personal opportunity ranking system (jobs + freelas): ingest → normalize → dedupe → explainable score → Radar / Pipeline / Analytics.
+
+Positioning: entry-level full-stack / product engineering case — **not** enterprise SaaS, not “AI platform” unless evidence exists.
+
+## Stack
+
+Next.js 16 · React 19 · TypeScript (strict) · Drizzle + SQLite/libSQL · TanStack Query
+
+Before changing Next.js APIs, read `AGENTS.md` and local docs under `node_modules/next/dist/docs/`.
+
+## Validation
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Prefer small, reviewable commits. Do not mix mass formatting with functional fixes.
+
+## Security
+
+- Never commit `.env`, tokens, `*.db`, personal applications, or real notes.
+- No SQL built from untrusted string interpolation; use Drizzle APIs / `inArray` / allowlists.
+- No mass assignment: whitelist PATCH fields; never client-set `score` / `fitLabel` / audit fields.
+- `PRISM_DEMO_MODE=1|true` must block mutations, sync, rescore, and expensive jobs.
+- Backup DB before destructive migrations.
+
+## Truthfulness
+
+- Do not invent metrics, users, demos, or coverage.
+- Differentiate fact / inference / recommendation / done / pending.
+- Update docs when behavior changes (`docs/execution/04-progress.md` at phase end).
+
+## TypeScript
+
+- Prefer `unknown` at boundaries; validate before use.
+- Avoid ornamental abstractions; services only where business rules need them.

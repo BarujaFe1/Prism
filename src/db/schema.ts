@@ -1,7 +1,9 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
-export const jobs = sqliteTable("jobs", {
+export const jobs = sqliteTable(
+  "jobs",
+  {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   company: text("company").notNull(),
@@ -70,7 +72,19 @@ export const jobs = sqliteTable("jobs", {
   updatedAt: text("updated_at")
     .notNull()
     .default(sql`(current_timestamp)`),
-});
+  },
+  (table) => ({
+    statusIdx: index("jobs_status_idx").on(table.status),
+    scoreIdx: index("jobs_score_idx").on(table.score),
+    postedAtIdx: index("jobs_posted_at_idx").on(table.postedAt),
+    sourceIdx: index("jobs_source_idx").on(table.source),
+    hashIdx: index("jobs_hash_idx").on(table.hash),
+    sourceSourceIdUidx: uniqueIndex("jobs_source_source_id_uidx").on(
+      table.source,
+      table.sourceId
+    ),
+  })
+);
 
 export const jobEvents = sqliteTable("job_events", {
   id: text("id").primaryKey(),
@@ -173,7 +187,8 @@ export const profile = sqliteTable("profile", {
   freelanceSpecialization: text("freelance_specialization"),
   skillsEvidence: text("skills_evidence", { mode: "json" }).$type<any[]>(),
   learningBacklog: text("learning_backlog", { mode: "json" }).$type<any[]>(),
- 
+  applicationPlans: text("application_plans", { mode: "json" }).$type<any[]>(),
+
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
