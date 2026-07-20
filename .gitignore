@@ -58,4 +58,3 @@ next-env.d.ts
 .idea/
 .vscode/
 !.vscode/extensions.json
-.env*
