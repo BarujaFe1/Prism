@@ -2,6 +2,21 @@
 
 All notable changes to **Prism** will be documented in this file.
 
+## [Unreleased] — employability transformation branch
+
+### Security
+- Hardened API inputs: allowlisted PATCH fields, Drizzle `inArray` filters, demo read-only mode (`PRISM_DEMO_MODE`).
+- Standardized API error shape `{ error: { code, message } }` on critical routes.
+
+### Platform
+- `demo:seed` / `demo:reset` with synthetic deterministic jobs (`file:demo.db`).
+- Job table indexes (status, score, posted_at, source, hash, unique source+source_id).
+- `engines.node` ≥ 22, `.nvmrc`, CI workflow, Dependabot, issue/PR templates.
+- Docs: deployment, demo-mode, SQLite/demo ADRs, CONTRIBUTING, SECURITY.
+
+### Tests
+- Regression tests for api-guards, scoring gates, normalizer, red flags, dedupe.
+
 ## [0.3.0] - 2026-06-11
 
 ### Fixed
