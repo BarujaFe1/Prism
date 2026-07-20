@@ -13,35 +13,29 @@ import type { ProfileData, LocationType, ContractType, ExperienceLevel, JobWithS
 import { locationTypeLabel, contractTypeLabel, experienceLevelLabel, fitLabelText } from "@/lib/utils";
 import Link from "next/link";
 
+import { buildPersonalProfilePayload, PERSONAL_NEGATIVE_KEYWORDS } from "@/lib/profile/personal-profile";
+
+const PERSONAL_DEFAULTS = buildPersonalProfilePayload();
+
 const DEFAULTS: ProfileData = {
-  name: "Felipe Baruja",
-  headline: "Cientista de Dados em formação | Full-Stack | USP-ICMC",
-  summary: "Estudante de Estatística e Ciência de Dados na USP-ICMC (1º ano). Desenvolvedor full-stack com projetos reais em produção (React Native, Next.js, Python). Busco estágio em Ciência de Dados, Analytics ou desenvolvimento.",
-  skills: [
-    "Python", "Pandas", "SQL", "Statistics", "Data Science", "EDA",
-    "TypeScript", "Next.js", "React", "Node.js", "FastAPI",
-    "PostgreSQL", "SQLite", "Drizzle ORM", "Supabase",
-    "Git", "GitHub", "Excel", "Google Sheets", "API",
-    "Machine Learning", "Scikit-learn", "Probability",
-    "React Native", "Docker", "Vercel", "Selenium",
-  ],
-  desiredRoles: [
-    "Estágio em Ciência de Dados",
-    "Estágio em Análise de Dados",
-    "Estágio em Engenharia de Dados",
-    "Estágio em Business Intelligence",
-    "Estágio em Desenvolvimento Full-Stack",
-    "Júnior em Data Science",
-    "Júnior em Data Analytics",
-    "Júnior em Full-Stack",
-  ],
-  desiredSalaryMin: 1500,
-  desiredSalaryMax: 5000,
-  desiredCurrency: "BRL",
-  desiredLocationTypes: ["remote", "hybrid"],
-  desiredContractTypes: ["internship", "clt", "pj", "international"],
-  experienceLevel: "junior",
-  languages: ["Português", "Inglês"],
+  name: PERSONAL_DEFAULTS.name,
+  headline: PERSONAL_DEFAULTS.headline,
+  summary: PERSONAL_DEFAULTS.summary,
+  skills: PERSONAL_DEFAULTS.skills,
+  desiredRoles: PERSONAL_DEFAULTS.desiredRoles,
+  desiredSalaryMin: PERSONAL_DEFAULTS.desiredSalaryMin,
+  desiredSalaryMax: PERSONAL_DEFAULTS.desiredSalaryMax,
+  desiredCurrency: PERSONAL_DEFAULTS.desiredCurrency,
+  desiredLocationTypes: PERSONAL_DEFAULTS.desiredLocationTypes,
+  desiredContractTypes: PERSONAL_DEFAULTS.desiredContractTypes,
+  experienceLevel: PERSONAL_DEFAULTS.experienceLevel,
+  languages: PERSONAL_DEFAULTS.languages,
+  githubUrl: PERSONAL_DEFAULTS.githubUrl,
+  linkedinUrl: PERSONAL_DEFAULTS.linkedinUrl,
+  portfolioUrl: PERSONAL_DEFAULTS.portfolioUrl,
+  resumeUrl: PERSONAL_DEFAULTS.resumeUrl,
+  resumeFilename: PERSONAL_DEFAULTS.resumeFilename,
+  contactEmail: PERSONAL_DEFAULTS.contactEmail,
 };
 
 export function ProfileClient() {
@@ -54,22 +48,38 @@ export function ProfileClient() {
   const [newRole, setNewRole] = useState("");
   const [newKeyword, setNewKeyword] = useState("");
   const [negativeKeywords, setNegativeKeywords] = useState<string[]>([
-    "vendas", "SAP", "COBOL", "presencial", "VBA", "Delphi", "mainframe",
+    ...PERSONAL_NEGATIVE_KEYWORDS,
   ]);
   const [saving, setSaving] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
-  const [flexProfile, setFlexProfile] = useState({
-    freelanceMinHourlyRate: null as number | null,
-    freelancePreferredCurrency: "USD",
-    freelanceAvailableHoursPerWeek: 20,
-    freelanceOpenToFixedPrice: true,
-    freelanceMinFixedProjectValue: null as number | null,
-    freelanceExperienceYears: null as number | null,
-    freelancePortfolioUrl: "",
+  const [flexProfile, setFlexProfile] = useState<{
+    freelanceMinHourlyRate: number | null;
+    freelancePreferredCurrency: string;
+    freelanceAvailableHoursPerWeek: number | null;
+    freelanceOpenToFixedPrice: boolean;
+    freelanceMinFixedProjectValue: number | null;
+    freelanceExperienceYears: number | null;
+    freelancePortfolioUrl: string;
+    freelanceSpecialization: string;
+  }>({
+    freelanceMinHourlyRate: (PERSONAL_DEFAULTS.freelanceMinHourlyRate as number) ?? 20,
+    freelancePreferredCurrency: (PERSONAL_DEFAULTS.freelancePreferredCurrency as string) ?? "USD",
+    freelanceAvailableHoursPerWeek:
+      (PERSONAL_DEFAULTS.freelanceAvailableHoursPerWeek as number) ?? 10,
+    freelanceOpenToFixedPrice: (PERSONAL_DEFAULTS.freelanceOpenToFixedPrice as boolean) ?? true,
+    freelanceMinFixedProjectValue:
+      (PERSONAL_DEFAULTS.freelanceMinFixedProjectValue as number) ?? 300,
+    freelanceExperienceYears: (PERSONAL_DEFAULTS.freelanceExperienceYears as number) ?? 2,
+    freelancePortfolioUrl: (PERSONAL_DEFAULTS.freelancePortfolioUrl as string) ?? "",
     freelanceSpecialization: "full-stack",
   });
+  const [applicationPlans, setApplicationPlans] = useState<any[]>(
+    (PERSONAL_DEFAULTS.applicationPlans as any[]) || []
+  );
 
-  const [skillsEvidence, setSkillsEvidence] = useState<any[]>([]);
+  const [skillsEvidence, setSkillsEvidence] = useState<any[]>(
+    (PERSONAL_DEFAULTS.skillsEvidence as any[]) || []
+  );
   const [newEvProject, setNewEvProject] = useState("");
   const [newEvUrl, setNewEvUrl] = useState("");
   const [newEvDesc, setNewEvDesc] = useState("");
@@ -116,7 +126,9 @@ export function ProfileClient() {
   };
 
   // Learning Backlog States
-  const [learningBacklog, setLearningBacklog] = useState<any[]>([]);
+  const [learningBacklog, setLearningBacklog] = useState<any[]>(
+    (PERSONAL_DEFAULTS.learningBacklog as any[]) || []
+  );
   const [newBtSkill, setNewBtSkill] = useState("");
   const [newBtTitle, setNewBtTitle] = useState("");
   const [newBtReason, setNewBtReason] = useState("");
@@ -183,15 +195,16 @@ export function ProfileClient() {
           if (data.negativeKeywords) setNegativeKeywords(data.negativeKeywords);
           if (data.skillsEvidence) setSkillsEvidence(data.skillsEvidence);
           if (data.learningBacklog) setLearningBacklog(data.learningBacklog);
+          if (data.applicationPlans) setApplicationPlans(data.applicationPlans);
           setFlexProfile({
-            freelanceMinHourlyRate: data.freelanceMinHourlyRate ?? null,
+            freelanceMinHourlyRate: data.freelanceMinHourlyRate ?? 20,
             freelancePreferredCurrency: data.freelancePreferredCurrency ?? "USD",
-            freelanceAvailableHoursPerWeek: data.freelanceAvailableHoursPerWeek ?? 20,
+            freelanceAvailableHoursPerWeek: data.freelanceAvailableHoursPerWeek ?? 10,
             freelanceOpenToFixedPrice: data.freelanceOpenToFixedPrice ?? true,
-            freelanceMinFixedProjectValue: data.freelanceMinFixedProjectValue ?? null,
-            freelanceExperienceYears: data.freelanceExperienceYears ?? null,
+            freelanceMinFixedProjectValue: data.freelanceMinFixedProjectValue ?? 300,
+            freelanceExperienceYears: data.freelanceExperienceYears ?? 2,
             freelancePortfolioUrl: data.freelancePortfolioUrl ?? "",
-            freelanceSpecialization: data.freelanceSpecialization ?? "full-stack",
+            freelanceSpecialization: data.freelanceSpecialization ?? "Full-Stack",
           });
         }
       })
@@ -323,7 +336,14 @@ export function ProfileClient() {
   const save = async () => {
     setSaving(true);
     try {
-      const body = { ...profile, negativeKeywords, ...flexProfile, skillsEvidence, learningBacklog };
+      const body = {
+        ...profile,
+        negativeKeywords,
+        ...flexProfile,
+        skillsEvidence,
+        learningBacklog,
+        applicationPlans,
+      };
       await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -419,6 +439,52 @@ export function ProfileClient() {
             Recalculando scores...
           </div>
         )}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="text-xs"
+          onClick={() => {
+            const p = buildPersonalProfilePayload();
+            setProfile({
+              name: p.name,
+              headline: p.headline,
+              summary: p.summary,
+              skills: p.skills,
+              desiredRoles: p.desiredRoles,
+              desiredSalaryMin: p.desiredSalaryMin,
+              desiredSalaryMax: p.desiredSalaryMax,
+              desiredCurrency: p.desiredCurrency,
+              desiredLocationTypes: p.desiredLocationTypes,
+              desiredContractTypes: p.desiredContractTypes,
+              experienceLevel: p.experienceLevel,
+              languages: p.languages,
+              githubUrl: p.githubUrl,
+              linkedinUrl: p.linkedinUrl,
+              portfolioUrl: p.portfolioUrl,
+              resumeUrl: p.resumeUrl,
+              resumeFilename: p.resumeFilename,
+              contactEmail: p.contactEmail,
+            });
+            setNegativeKeywords([...(p.negativeKeywords || [])]);
+            setSkillsEvidence([...(p.skillsEvidence as any[])]);
+            setLearningBacklog([...(p.learningBacklog as any[])]);
+            setApplicationPlans([...(p.applicationPlans as any[])]);
+            setFlexProfile({
+              freelanceMinHourlyRate: (p.freelanceMinHourlyRate as number) ?? 20,
+              freelancePreferredCurrency: (p.freelancePreferredCurrency as string) ?? "USD",
+              freelanceAvailableHoursPerWeek: (p.freelanceAvailableHoursPerWeek as number) ?? 10,
+              freelanceOpenToFixedPrice: (p.freelanceOpenToFixedPrice as boolean) ?? true,
+              freelanceMinFixedProjectValue: (p.freelanceMinFixedProjectValue as number) ?? 300,
+              freelanceExperienceYears: (p.freelanceExperienceYears as number) ?? 2,
+              freelancePortfolioUrl: (p.freelancePortfolioUrl as string) ?? "",
+              freelanceSpecialization: "full-stack",
+            });
+            toast("Perfil recomendado carregado — revise e salve.", "success");
+          }}
+        >
+          Carregar perfil recomendado
+        </Button>
       </div>
 
       <div className="grid grid-cols-3 gap-8">
@@ -915,6 +981,59 @@ export function ProfileClient() {
                   Salvar Evidência na Lista
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Planos de candidatura */}
+          <Card id="application-plans-card">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-accent" />
+                  Planos de candidatura (busca pessoal)
+                </h2>
+                <span className="text-[10px] text-text-tertiary">
+                  Meta semanal sugerida:{" "}
+                  {applicationPlans
+                    .filter((p) => p.active)
+                    .reduce((sum: number, p: { weeklyTarget?: number }) => sum + (p.weeklyTarget || 0), 0)}{" "}
+                  apps
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {applicationPlans.length === 0 ? (
+                <p className="text-xs text-text-tertiary">
+                  Rode <code className="text-accent">npm run profile:personal</code> para carregar os planos.
+                </p>
+              ) : (
+                applicationPlans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="rounded-lg border border-border/60 bg-bg-elevated/10 p-3 text-left"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-text-primary">{plan.title}</p>
+                        <p className="text-[11px] text-text-secondary mt-1">
+                          {plan.weeklyTarget}/semana · {(plan.roleFocus || []).join(", ")}
+                        </p>
+                        <p className="text-[11px] text-text-tertiary mt-1">{plan.notes}</p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(plan.channels || []).map((ch: string) => (
+                            <Badge key={ch} className="text-[10px]">
+                              {ch}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <Badge variant={plan.active ? "success" : "default"} className="text-[10px] shrink-0">
+                        {plan.active ? "Ativo" : "Pausado"}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 

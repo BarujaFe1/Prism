@@ -158,6 +158,7 @@ export interface ProfileData {
   contactEmail?: string;
   skillsEvidence?: any[];
   learningBacklog?: any[];
+  applicationPlans?: any[];
 }
 
 export interface SettingsData {

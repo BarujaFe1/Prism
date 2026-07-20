@@ -57,6 +57,7 @@ export const ALLOWED_PROFILE_FIELDS = new Set([
   "freelanceSpecialization",
   "skillsEvidence",
   "learningBacklog",
+  "applicationPlans",
 ]);
 
 /** User-editable freelance project fields — fitScore/breakdown remain computed. */

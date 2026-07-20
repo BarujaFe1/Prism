@@ -187,7 +187,8 @@ export const profile = sqliteTable("profile", {
   freelanceSpecialization: text("freelance_specialization"),
   skillsEvidence: text("skills_evidence", { mode: "json" }).$type<any[]>(),
   learningBacklog: text("learning_backlog", { mode: "json" }).$type<any[]>(),
- 
+  applicationPlans: text("application_plans", { mode: "json" }).$type<any[]>(),
+
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

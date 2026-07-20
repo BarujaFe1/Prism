@@ -98,7 +98,13 @@ export function classifyDomain(title: string): string {
   if (/\b(fullstack data|full stack data|fullstack analytics|dashboard developer|internal tools|automação|automacao|python developer data|backend data|api analytics)\b/i.test(t)) {
     return "fullstack_dados";
   }
-  if (/\b(full stack|fullstack|full-stack|backend|back end|back-end|python|nodejs|typescript|node dev|node\.js|go dev|golang|rust dev)\b/i.test(t)) {
+  if (/\b(product engineer|engenheiro de produto)\b/i.test(t)) {
+    return "fullstack_backend";
+  }
+  if (/\b(front[\s-]?end|react developer|ui engineer)\b/i.test(t)) {
+    return "frontend";
+  }
+  if (/\b(full stack|fullstack|full-stack|backend|back end|back-end|nodejs|typescript|node\.js)\b/i.test(t)) {
     return "fullstack_backend";
   }
   if (/\b(software engineer|engenheiro de software|desenvolvedor|developer|programmer|programador|eng\. de software)\b/i.test(t)) {
@@ -263,14 +269,18 @@ export function computeScore(job: {
   }
 
   // --- 4. Subscores Calculations for Actionability ---
-  // A. Domain / Track Match (20% weight)
+  // A. Domain / Track Match (20% weight) — full-stack/product primeiro, dados ainda fortes
   let domainScore = 0.5;
-  if (["data_engineering", "data", "bi_analytics", "produto_dados", "estatistica", "ia_aplicada", "fullstack_dados"].includes(domain)) {
+  if (
+    ["fullstack_backend", "software_engineering", "frontend", "fullstack_dados"].includes(domain)
+  ) {
     domainScore = 1.0;
-  } else if (["software_engineering", "fullstack_backend"].includes(domain)) {
-    // Check if description mentions data operations
-    const mentionsData = /dado|database|analytics|etl|sql|dashboard|api|automaç/i.test(job.description || "");
-    domainScore = mentionsData ? 0.8 : 0.5;
+  } else if (
+    ["data_engineering", "data", "bi_analytics", "produto_dados", "estatistica", "ia_aplicada"].includes(
+      domain
+    )
+  ) {
+    domainScore = 0.9;
   } else if (isIncompatibleDomain) {
     domainScore = 0.0;
   }

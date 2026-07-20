@@ -131,60 +131,84 @@ export function checkEligibility(
     }
   }
 
-  // 4. Kill switch: Vendas / Business / Comercial
-  const salesKeywords = [
-    /account\s+executive/i,
-    /\bsales\b/i,
-    /\bvendas\b/i,
-    /\bsdr\b/i,
-    /\bbdr\b/i,
-    /business\s+development/i,
-    /customer\s+success/i,
-    /account\s+manager/i,
-    /\brevenue\b/i,
-    /\bquota\b/i,
-    /pipeline\s+comercial/i,
-    /ppc\s+strategist/i,
-    /amazon\s+ppc/i,
-    /advertising\s+specialist/i
-  ];
-  for (const pattern of salesKeywords) {
-    if (pattern.test(t)) {
-      return {
-        status: "sales_business_role",
-        reason: "sales_role",
-        explanation: "Suprimida: vaga de caráter comercial/vendas",
-      };
+  // 4. Kill switch: Vendas / Business / Comercial (não matar sales analytics / data)
+  const salesExempt =
+    /\b(analyst|analytics|engineer|engineering|data|ops|operations|enablement|scientist|developer|desenvolvedor)\b/i.test(
+      t
+    );
+  if (!salesExempt) {
+    const salesKeywords = [
+      /account\s+executive/i,
+      /\bsdr\b/i,
+      /\bbdr\b/i,
+      /cold\s+call/i,
+      /inside\s+sales/i,
+      /field\s+sales/i,
+      /representante\s+comercial/i,
+      /vendedor\s+externo/i,
+      /telemarketing/i,
+      /\bcloser\b/i,
+      /business\s+development\s+representative/i,
+      /customer\s+success\s+manager/i,
+      /account\s+manager/i,
+      /\bquota\b/i,
+      /pipeline\s+comercial/i,
+      /est[áa]gio\s+em\s+marketing/i,
+      /est[áa]gio\s+comercial/i,
+      /atendimento\s+ao\s+cliente/i,
+      /help\s*desk\s*n\s*1/i,
+      /suporte\s*n\s*1/i,
+      /\bcobran[cç]a\b/i,
+      // "sales" / "vendas" isolados no título comercial
+      /^(?=.*\b(sales|vendas)\b)(?!.*\b(analyst|analytics|engineer|data|developer)\b).*$/i,
+      /ppc\s+strategist/i,
+      /amazon\s+ppc/i,
+      /advertising\s+specialist/i,
+    ];
+    for (const pattern of salesKeywords) {
+      if (pattern.test(t)) {
+        return {
+          status: "sales_business_role",
+          reason: "sales_role",
+          explanation: "Suprimida: vaga de caráter comercial/vendas (não técnica)",
+        };
+      }
     }
   }
 
-  // 5. Kill switch: Fora da trilha (design, WordPress, Elementor, HR/RH, legal/jurídico, marketing, administrativo)
-  const wrongTrackKeywords = [
-    /graphic\s+designer|designer\s+gr[áa]fico/i,
-    /\bwordpress\b/i,
-    /\belementor\b/i,
-    /\bhr\b/i,
-    /recursos\s+humanos/i,
-    /\brh\b/i,
-    /\brecruiter|recrutador\b/i,
-    /\blegal\b/i,
-    /privacy\s+analyst/i,
-    /administrative\s+analyst|analista\s+administrativo/i,
-    /\bmarketing\b/i,
-    /social\s+media/i,
-    /\bsap\b/i,
-    /\bcobol\b/i,
-    /\bmainframe\b/i
-  ];
-  for (const pattern of wrongTrackKeywords) {
-    if (pattern.test(t)) {
-      // Diferenciar se for vaga de dados/BI disfarçada
-      const isDataBI = /\b(data|dados|bi|analytics|sql)\b/i.test(t);
-      if (!isDataBI) {
+  // 5. Kill switch: Fora da trilha (design, WordPress legado, HR/RH, legal, marketing puro, legado)
+  // Não matar "marketing analytics" / martech técnico; SAP isolado → só SAP ABAP/legado explícito.
+  const wrongTrackExempt =
+    /\b(analyst|analytics|engineer|engineering|data|developer|desenvolvedor|fullstack|full[\s-]?stack|software)\b/i.test(
+      t
+    );
+  if (!wrongTrackExempt) {
+    const wrongTrackKeywords = [
+      /graphic\s+designer|designer\s+gr[áa]fico/i,
+      /wordpress\s+exclusivamente|somente\s+wordpress|\bwordpress\b.*\belementor\b/i,
+      /\belementor\b/i,
+      /\bhr\b/i,
+      /recursos\s+humanos/i,
+      /\brh\b/i,
+      /\brecruiter|recrutador\b/i,
+      /\blegal\b/i,
+      /privacy\s+analyst/i,
+      /administrative\s+analyst|analista\s+administrativo/i,
+      /est[áa]gio\s+em\s+marketing|est[áa]gio\s+comercial/i,
+      /social\s+media\s+manager|gestor\s+de\s+m[ií]dias/i,
+      /sap\s+abap|\babap\b/i,
+      /\bcobol\b/i,
+      /\bdelphi\b/i,
+      /\bvba\b/i,
+      /\bmainframe\b/i,
+      /php\s+legado\s+exclusivamente/i,
+    ];
+    for (const pattern of wrongTrackKeywords) {
+      if (pattern.test(t)) {
         return {
           status: "wrong_track",
           reason: "wrong_domain",
-          explanation: "Suprimida por cargo/domínio fora do escopo de dados/engenharia",
+          explanation: "Suprimida por cargo/domínio fora do escopo de software/dados",
         };
       }
     }

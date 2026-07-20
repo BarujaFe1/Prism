@@ -1,6 +1,7 @@
 /**
- * Deterministic synthetic demo dataset for Prism.
- * Safe for public demos — no real applications, notes, or personal contacts.
+ * Deterministic demo dataset for Prism.
+ * Jobs/events remain synthetic. Profile uses Felipe's real personal payload
+ * (owner-only public URL). Still read-only when PRISM_DEMO_MODE=1.
  *
  * Usage:
  *   DATABASE_URL=file:demo.db npm run demo:seed
@@ -11,6 +12,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { eq } from "drizzle-orm";
 import * as schema from "../src/db/schema";
 import { computeScore } from "../src/engine/scorer";
+import { buildPersonalProfilePayload } from "../src/lib/profile/personal-profile";
 import type { ProfileData, LocationType, ContractType, ExperienceLevel, JobStatus } from "../src/types";
 
 const url = process.env.DATABASE_URL || "file:demo.db";
@@ -592,42 +594,8 @@ const DEMO_JOBS: DemoJob[] = [
   },
 ];
 
-const DEMO_PROFILE: ProfileData = {
-  name: "Demo Candidate",
-  headline: "Full-Stack júnior · Estatística e Ciência de Dados (USP)",
-  summary:
-    "Perfil sintético para demonstração do Prism. Skills alinhadas a TypeScript, React/Next.js, Node, SQL e dados — sem dados pessoais reais.",
-  skills: [
-    "TypeScript",
-    "JavaScript",
-    "React",
-    "Next.js",
-    "Node.js",
-    "SQL",
-    "PostgreSQL",
-    "Python",
-    "Pandas",
-    "Git",
-    "APIs REST",
-  ],
-  desiredRoles: [
-    "Full Stack",
-    "Frontend",
-    "Backend",
-    "Product Engineer",
-    "Estágio",
-    "Trainee",
-    "Data Analyst",
-  ],
-  desiredSalaryMin: 2000,
-  desiredSalaryMax: 9000,
-  desiredCurrency: "BRL",
-  desiredLocationTypes: ["remote", "hybrid"],
-  desiredContractTypes: ["internship", "clt", "pj"],
-  experienceLevel: "junior",
-  languages: ["pt", "en"],
-  negativeKeywords: ["sales", "marketing", "cold calling"],
-};
+/** Perfil do site: payload pessoal do Felipe. Vagas continuam sintéticas. */
+const DEMO_PROFILE = buildPersonalProfilePayload() as ProfileData & Record<string, unknown>;
 
 function assertDemoUrl(target: string) {
   const allowed =
@@ -759,6 +727,23 @@ export async function seedDemo() {
     experienceLevel: DEMO_PROFILE.experienceLevel,
     languages: DEMO_PROFILE.languages,
     negativeKeywords: DEMO_PROFILE.negativeKeywords,
+    githubUrl: DEMO_PROFILE.githubUrl as string | null,
+    linkedinUrl: DEMO_PROFILE.linkedinUrl as string | null,
+    portfolioUrl: DEMO_PROFILE.portfolioUrl as string | null,
+    resumeUrl: DEMO_PROFILE.resumeUrl as string | null,
+    resumeFilename: DEMO_PROFILE.resumeFilename as string | null,
+    contactEmail: DEMO_PROFILE.contactEmail as string | null,
+    skillsEvidence: DEMO_PROFILE.skillsEvidence as any,
+    learningBacklog: DEMO_PROFILE.learningBacklog as any,
+    applicationPlans: DEMO_PROFILE.applicationPlans as any,
+    freelanceMinHourlyRate: DEMO_PROFILE.freelanceMinHourlyRate as number | null,
+    freelancePreferredCurrency: DEMO_PROFILE.freelancePreferredCurrency as string | null,
+    freelanceAvailableHoursPerWeek: DEMO_PROFILE.freelanceAvailableHoursPerWeek as number | null,
+    freelanceOpenToFixedPrice: DEMO_PROFILE.freelanceOpenToFixedPrice as boolean | null,
+    freelanceMinFixedProjectValue: DEMO_PROFILE.freelanceMinFixedProjectValue as number | null,
+    freelanceExperienceYears: DEMO_PROFILE.freelanceExperienceYears as number | null,
+    freelancePortfolioUrl: DEMO_PROFILE.freelancePortfolioUrl as string | null,
+    freelanceSpecialization: DEMO_PROFILE.freelanceSpecialization as string | null,
     updatedAt: now,
   });
 
@@ -769,7 +754,9 @@ export async function seedDemo() {
     dailyBriefingEnabled: true,
   });
 
-  console.log(`Seeded ${DEMO_JOBS.length} synthetic demo jobs into ${url}`);
+  console.log(
+    `Seeded ${DEMO_JOBS.length} synthetic jobs + personal profile (${DEMO_PROFILE.name}) into ${url}`
+  );
 }
 
 async function main() {

@@ -30,6 +30,8 @@
     "demo:seed": "npx tsx scripts/demo-seed.ts seed",
     "demo:reset": "npx tsx scripts/demo-seed.ts reset",
     "demo:prepare": "npx tsx scripts/prepare-demo-db.ts",
+    "profile:personal": "npx tsx scripts/seed-personal-profile.ts",
+    "profile:patch-schema": "npx tsx scripts/patch-profile-schema.ts",
     "test:e2e": "playwright test",
     "screenshots": "npx tsx scripts/capture-screenshots.ts"
   },
